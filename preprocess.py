@@ -45,8 +45,12 @@ def preprocess_keywords(raw_list):
             tmp_set.add(processed)
     return sorted(list(tmp_set))
 
+
 def split2sent(abstract):
-    abstract = re.sub('\s+', ' ', abstract)
+    """ split texts to sentences
+    return: list of str
+    """
+    abstract = re.sub(r'\s+', ' ', abstract)
     return sent_tokenize(abstract)
 
 

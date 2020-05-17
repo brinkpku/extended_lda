@@ -11,6 +11,8 @@ ABSTRACTDATA = "abstract_data"
 # json, sentence data
 NEWSSENT = "newssent"
 ABSTRACTSENT = "abstractsent"
+NEWSSENTTOKEN = "newssenttoken" # lemmatized sentence words
+ABSTRACTSENTTOKEN = "abstractsenttoken"
 
 # numpy, lda result: terms, doc_topic, topic_word
 ABSTRACTLDA = "abstract_lda"
