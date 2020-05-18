@@ -24,13 +24,13 @@ def lemmatize_sent_words(sent):
     """
     return [pp.lemmatize(word) for word in CLI.word_tokenize(sent)]
 
-def get_sent_idx(sents, topic_word):
+def get_sent_idx(lemmatized_sents_words, topic_word):
     """ get idx of sentence contains topic word
-    sents: list, [[lemmatized_word,..],[...]]
+    lemmatized_sents_words: list, [[lemmatized_word,..],[...]]
     return: set of int, indexs
     """
     idxs = set()
-    for idx, sent in enumerate(sents):
+    for idx, sent in enumerate(lemmatized_sents_words):
         if topic_word in sent:
             idxs.add(idx)
     return idxs
