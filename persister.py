@@ -12,9 +12,11 @@ def save_json(json_name, obj):
     with open(json_name+".json", "w", encoding="utf8") as f:
         json.dump(obj, f, ensure_ascii=True)
 
+def add_json(json_name, line_obj):
+    with open(json_name+".json", "a+", encoding="utf8") as f:
+        f.writelines("".join([json.dumps(line_obj, ensure_ascii=True), "\n"]))
+
 # save npz, lda result
-
-
 def save_npz(npz_name, *args, **kwds):
     np.savez(npz_name, *args, **kwds)
 

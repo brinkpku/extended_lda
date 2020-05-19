@@ -1,3 +1,6 @@
+# !/usr/bin/env python3
+from stanza.server import CoreNLPClient
+
 from newsgroups import get_news_data, CATEGORIES
 import preprocess as pp
 import lda
@@ -44,4 +47,9 @@ elif configs.MODE == "init":
         texts, topic_num=len(CATEGORIES))
     persister.persist_lda(configs.NEWSLDA, terms, doc_topic, topic_word)
 
-lda.print_topics(topic_word, terms, doc_topic)
+# lda.print_topics(topic_word, terms, doc_topic)
+with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='4G') as client:
+    for idx,news in enumerate(newssent):
+        print("parse {}/{} news".format(idx, len(newssent)))
+        res = relation.corenlp_annotate(client, " ".join(news))
+        persister.add_json(configs.NEWSPARSE, res)
