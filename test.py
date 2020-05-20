@@ -1,4 +1,6 @@
 # !/usr/bin/env python3
+import json
+
 from stanza.server import CoreNLPClient
 
 from newsgroups import get_news_data, CATEGORIES
@@ -14,6 +16,9 @@ if configs.MODE == "load":
     newssent = persister.load_json(configs.NEWSSENT)
     terms, doc_topic, topic_word = persister.read_lda(configs.NEWSLDA)
     newssenttoken = persister.load_json(configs.NEWSSENTTOKEN)
+    with open(configs.NEWSPARSE+".json", encoding="utf8") as f:
+        newsparse = f.readlines()
+    newsparse = [json.loads(n) for n in newsparse]
 elif configs.MODE == "init":
     raw_data = get_news_data(500)
     newsdata = []
@@ -21,7 +26,7 @@ elif configs.MODE == "init":
         newsdata.extend(cate)
 
     print("convert to sentences..")
-    # save sentences 
+    # save sentences
     newssent = []
     for news in newsdata:
         newssent.append(pp.split2sent(news))
@@ -32,7 +37,8 @@ elif configs.MODE == "init":
     for news in newssent:
         tokenized_lemmatized_news = []
         for sent in news:
-            tokenized_lemmatized_news.append(relation.lemmatize_sent_words(sent))
+            tokenized_lemmatized_news.append(
+                relation.lemmatize_sent_words(sent))
         newssenttoken.append(tokenized_lemmatized_news)
     persister.save_json(configs.NEWSSENTTOKEN, newssenttoken)
 
@@ -47,9 +53,11 @@ elif configs.MODE == "init":
         texts, topic_num=len(CATEGORIES))
     persister.persist_lda(configs.NEWSLDA, terms, doc_topic, topic_word)
 
+    print("annotate sentence..")
+    with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='5G') as client:
+        for idx, news in enumerate(newssent):
+            print("parse {}/{} news".format(idx, len(newssent)))
+            res = relation.corenlp_annotate(client, " ".join(news))
+            persister.add_json(configs.NEWSPARSE, res)
+
 # lda.print_topics(topic_word, terms, doc_topic)
-with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='4G') as client:
-    for idx,news in enumerate(newssent):
-        print("parse {}/{} news".format(idx, len(newssent)))
-        res = relation.corenlp_annotate(client, " ".join(news))
-        persister.add_json(configs.NEWSPARSE, res)

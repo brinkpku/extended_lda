@@ -11,7 +11,7 @@ def do_lda(input_text, feature_method='tf', topic_num=5, vocabulary=None, method
     '''
     do lda process
     :param input_text: list, [str,], preprocessed text
-    :return: tuple of np.array, terms, doc-topic probability, topic-word probability, perplexity
+    :return: tuple of np.array. terms, doc-topic probability, topic-word probability, perplexity
     '''
     vector = None
     if feature_method == 'tf':
@@ -41,6 +41,33 @@ def print_topics(topic_word, terms, doc_topic, num=20):
     for idx, t in enumerate(topic_word):
         sort_word_idx = np.argsort(t)
         print("#", idx + 1, "-" * 20)
-        print(terms[sort_word_idx[-1:-num - 1:-1]])
+        for iidx in sort_word_idx[-1:-num - 1:-1]:
+            print(":".join([terms[iidx], str(t[iidx])]))
         sort_doc_idx = np.argsort(doc_topic[:, idx])
-        print(sort_doc_idx[-1:-num - 1:-1])
+        for iidx in sort_doc_idx[-1:-num - 1:-1]:
+            print(":".join([str(iidx), str(doc_topic[iidx][idx])]))
+
+
+def get_topics(topic_word, terms, doc_topic, num=20):
+    '''
+    like print_topics, but return values
+    :param topic_word: np.array, topic-word probability
+    :param terms: np.array, feature names
+    :param doc_topic: np.array, doc-topic probability
+    :param num: int, term num/doc num of topic to print
+    :return: tuple of list.
+    '''
+    top_terms = []
+    top_docs = []
+    for idx, t in enumerate(topic_word):
+        sort_word_idx = np.argsort(t)
+        top_term = []
+        for iidx in sort_word_idx[-1:-num - 1:-1]:
+            top_term.append((terms[iidx], t[iidx]))
+        top_terms.append(top_term)
+        top_doc = []
+        sort_doc_idx = np.argsort(doc_topic[:, idx])
+        for iidx in sort_doc_idx[-1:-num - 1:-1]:
+            top_doc.append((iidx, doc_topic[iidx][idx]))
+        top_docs.append(top_doc)
+    return top_terms, top_docs

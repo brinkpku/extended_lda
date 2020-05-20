@@ -3,6 +3,7 @@ import os
 
 # init, load
 MODE = os.getenv("mode", "init")
+USECLI = os.getenv("use_cli", True)
 
 # json, preprocessed data, used as lda params
 NEWSDATA = "newsdata"
