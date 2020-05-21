@@ -6,7 +6,7 @@ from string import punctuation
 
 from nltk import word_tokenize, sent_tokenize
 from nltk.stem.wordnet import WordNetLemmatizer
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords, wordnet
 
 import utils
 
@@ -15,8 +15,24 @@ WNL = WordNetLemmatizer()
 URL_REG = '(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]'
 
 
-def lemmatize(word):
-    return WNL.lemmatize(word)
+def lemmatize(word, pos=None):
+    if pos:
+        return WNL.lemmatize(word, pos)
+    else:
+        return WNL.lemmatize(word)
+
+
+def get_wordnet_pos(treebank_tag):
+    if treebank_tag.startswith('J'):
+        return wordnet.ADJ
+    elif treebank_tag.startswith('V'):
+        return wordnet.VERB
+    elif treebank_tag.startswith('N'):
+        return wordnet.NOUN
+    elif treebank_tag.startswith('R'):
+        return wordnet.ADV
+    else:
+        return wordnet.NOUN
 
 
 def preprocess_abstract(abstract):
