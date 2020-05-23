@@ -23,3 +23,13 @@ def get_news_data(size=SIZE, categories=CATEGORIES):
         selected = [newsdata.data[nidx[0]] for nidx in filtered_idx]
         selected_news.append(selected)
     return selected_news
+
+
+if __name__=="__main__":
+    tmp = get_news_data(500)
+    newsdata = []
+    for cate in tmp:
+        newsdata.extend(cate)
+    print(newsdata[1200])
+    from string import punctuation
+    print(punctuation)

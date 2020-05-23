@@ -20,6 +20,7 @@ if configs.MODE == "load":
         newsparse = f.readlines()
     newsparse = [json.loads(n) for n in newsparse]
 elif configs.MODE == "init":
+    print("get raw data..")
     raw_data = get_news_data(500)
     newsdata = []
     for cate in raw_data:

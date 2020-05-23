@@ -13,3 +13,12 @@ def timer(func):
         print("func {} exec time: {}".format(func.__name__, end - start))
         return result
     return wrapper
+
+
+# reltion 
+DEP2STR = "{} - [{}] - {}" # governor - dep relation - dependent
+DEPENDENT = "dependent"
+DEPENDENTGLOSS = "dependentGloss"
+GOVERNOR = "governor"
+GOVERNORGLOSS = "governorGloss"
+DEP = "dep"

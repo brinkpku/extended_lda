@@ -13,6 +13,7 @@ import utils
 
 WNL = WordNetLemmatizer()
 URL_REG = '(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]'
+EMAIL_REG = "[0-9a-zA-Z_]{0,19}@(?:[0-9a-zA-Z]{1,13}[.])+\w+"
 
 
 def lemmatize(word, pos=None):
@@ -37,11 +38,12 @@ def get_wordnet_pos(treebank_tag):
 
 def preprocess_abstract(abstract):
     '''
-    preprocess abstract: lower, remove punctuations, tokenize
+    preprocess abstract as lda input: lower, remove punctuations, tokenize
     :param abstract: str
     :return: list
     '''
     abstract = re.sub(URL_REG, ' ', abstract)
+    abstract = re.sub(EMAIL_REG, " ", abstract)
     abstract = re.sub('\d+?', ' ', abstract)
     for p in punctuation:
         abstract = re.sub(re.escape(p), ' ', abstract)
@@ -49,6 +51,13 @@ def preprocess_abstract(abstract):
     abstract = [lemmatize(w) for w in word_tokenize(abstract)]
     filtered = [w for w in abstract if w not in stopwords.words('english')]
     return filtered
+
+def format_news(news):
+    """ format news, remove unused character
+    """
+    news = re.sub("<", " ", news)
+    news = re.sub(r"\s+", " ", news)
+    return news
 
 
 @utils.timer
