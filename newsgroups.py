@@ -31,5 +31,3 @@ if __name__=="__main__":
     for cate in tmp:
         newsdata.extend(cate)
     print(newsdata[1200])
-    from string import punctuation
-    print(punctuation)

@@ -1,13 +1,20 @@
 # !/usr/bin/env python3
 import os
 
-# init, load
-MODE = os.getenv("mode", "init")
+MAX_TRY = 3
+
+
+MODE = os.getenv("mode", "init") # init, load, recover
+RECOVERIDX = os.getenv("recoveridx", 0)
 USECLI = os.getenv("use_cli", True)
 
+# json, raw data
+RAWNEWS = "rawnews"
+RAWABSTRACT = "rawabstract"
+
 # json, preprocessed data, used as lda params
-NEWSDATA = "newsdata"
-ABSTRACTDATA = "abstract_data"
+NEWSINPUT = "news_input"
+ABSTRACTINPUT = "abstract_input"
 
 # json, sentence data
 NEWSSENT = "newssent"

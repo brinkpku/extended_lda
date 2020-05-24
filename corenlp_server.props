@@ -1,7 +1,9 @@
 <!-- annotators = tokenize,ssplit,pos,lemma,parse,depparse,coref,ner -->
-annotators = pos,parse,depparse
+annotators = pos,parse,depparse,lemma
 
 outputFormat = json
 
 serializer = edu.stanford.nlp.pipeline.ProtobufAnnotationSerializer
+
+maxCharLength = 200000
 

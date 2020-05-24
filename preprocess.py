@@ -48,7 +48,8 @@ def preprocess_abstract(abstract):
     for p in punctuation:
         abstract = re.sub(re.escape(p), ' ', abstract)
     abstract = abstract.lower()
-    abstract = [lemmatize(w) for w in word_tokenize(abstract)]
+    # abstract = [lemmatize(w) for w in word_tokenize(abstract)]
+    abstract = [w for w in word_tokenize(abstract)] # lemmatized in corenlp parse
     filtered = [w for w in abstract if w not in stopwords.words('english')]
     return filtered
 

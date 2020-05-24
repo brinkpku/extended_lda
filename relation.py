@@ -34,11 +34,18 @@ def corenlp_annotate(cli, text):
     text: str, sentences
     return: str, json res if succeeded else error msg
     """
-    try:
-        res = cli.annotate(text)
-        return res.json()
-    except Exception as err:
-        return "err: {}".format(err)
+    tmp = 0
+    errstr = ""
+    while tmp < configs.MAX_TRY:
+        tmp += 1
+        try:
+            res = cli.annotate(text)
+            return res.json()
+        except Exception as err:
+            print("try {}, err: {}, {}.".format(tmp, err, len(text)))
+            errstr = "err: {}, {}.".format(err, len(text))
+    return errstr
+    
 
 
 # relation extraction
@@ -149,10 +156,16 @@ def convert_relation2str(relation_dict):
 
 
 if __name__ == '__main__':
-    sentence = 'Guangdong University of Foreign Studies is located in Guangzhou.'
-    print('Tokenize:', CLI.word_tokenize(sentence))
-    print('Part of Speech:', CLI.pos_tag(sentence))
-    print('Named Entities:', CLI.ner(sentence))
-    print('Constituency Parsing:', CLI.parse(sentence))
-    print('Dependency Parsing:', CLI.dependency_parse(sentence))
-    close_cli()
+    # sentence = 'Guangdong University of Foreign Studies is located in Guangzhou.'
+    # print('Tokenize:', CLI.word_tokenize(sentence))
+    # print('Part of Speech:', CLI.pos_tag(sentence))
+    # print('Named Entities:', CLI.ner(sentence))
+    # print('Constituency Parsing:', CLI.parse(sentence))
+    # print('Dependency Parsing:', CLI.dependency_parse(sentence))
+    # close_cli()
+    import newsgroups
+    from stanza.server import CoreNLPClient
+    news = newsgroups.get_news_data()
+    with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='5G') as client:
+        n = pp.format_news(news[0][0])
+        print(corenlp_annotate(client, n))
