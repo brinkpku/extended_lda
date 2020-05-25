@@ -4,24 +4,27 @@ import os
 MAX_TRY = 3
 
 
-MODE = os.getenv("mode", "init") # init, load, recover
+MODE = os.getenv("mode", "init") # init, load, rerun
 RECOVERIDX = os.getenv("recoveridx", 0)
-USECLI = os.getenv("use_cli", True)
+USECLI = os.getenv("use_cli", False)
 
 # json, raw data
 RAWNEWS = "rawnews"
 RAWABSTRACT = "rawabstract"
 
 # json, preprocessed data, used as lda params
-NEWSINPUT = "news_input"
-ABSTRACTINPUT = "abstract_input"
+NEWSINPUT = "news_input.lemma"
+ABSTRACTINPUT = "abstract_input.lemma"
 
 # json, sentence data
+# only persist parse data, sentence data can be generated from parse data
 NEWSSENT = "newssent"
 ABSTRACTSENT = "abstractsent"
 NEWSSENTTOKEN = "newssenttoken"  # lemmatized sentence words
 ABSTRACTSENTTOKEN = "abstractsenttoken"
+
 NEWSPARSE = "newsparse"  # corenlp analyse results
+ABSTRACTPARSE = "abstractparse"
 
 
 # numpy, lda result: terms, doc_topic, topic_word

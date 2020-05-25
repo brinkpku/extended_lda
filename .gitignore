@@ -1,5 +1,7 @@
 data/
-*json
-*npz
+*.json
+*.npz
 __pycache__/
 .ipynb_checkpoints/
+*.bak
+*.lemma

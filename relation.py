@@ -3,36 +3,38 @@
 """
 find semantic relation from documents
 """
+import os
+
 import utils
 import configs
 import preprocess as pp
+import persister
 
 import numpy as np
 from stanfordcorenlp import StanfordCoreNLP
+from stanza.server import CoreNLPClient
 from sklearn.preprocessing import MinMaxScaler
 
 # corenlp api
-CLI = StanfordCoreNLP('http://localhost', port=9001)
-# CLI = StanfordCoreNLP(r'/mnt/d/stanford-corenlp-full-2018-02-27', port=9001)
-print("inited stanford CoreNLP client, dont forget to close it!")
+if configs.USECLI:
+    CLI = StanfordCoreNLP('http://localhost', port=9001)
+    # CLI = StanfordCoreNLP(r'/mnt/d/stanford-corenlp-full-2018-02-27', port=9001)
+    print("inited stanford CoreNLP client, dont forget to close it!")
+else:
+    CLI = None
+    print("not use stanford CoreNLP client!")
+
 # clean up
-
-
 def close_cli():
     CLI.close()
     print("closed stanford CoreNLP client!")
-
-
-# not use cli, just close it
-if not configs.USECLI:
-    close_cli()
 
 
 def corenlp_annotate(cli, text):
     """ use corenlp annotate(self defined pipeline) sentence
     cli: stanza corenlp client
     text: str, sentences
-    return: str, json res if succeeded else error msg
+    return: obj or str, json res if succeeded else error msg
     """
     tmp = 0
     errstr = ""
@@ -42,9 +44,32 @@ def corenlp_annotate(cli, text):
             res = cli.annotate(text)
             return res.json()
         except Exception as err:
-            print("try {}, err: {}, {}.".format(tmp, err, len(text)))
-            errstr = "err: {}, {}.".format(err, len(text))
+            print("try {}, err: {} {}.".format(tmp, err, len(text)))
+            errstr = "err: {} {}.".format(err, len(text))
     return errstr
+
+
+def reannotate(rerunidxs, persist_file, raw_texts):
+    """ re annotate failed data
+    rerunidxs: list of int, sorted failed idx
+    persist_file: str, old persist file
+    raw_texts: list of str, raw data
+    """
+    os.rename(persist_file+".json", persist_file+".bak")
+    with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='4G', max_char_length=500000) as client:
+        with open(persist_file+".bak") as f:
+            for idx, l in enumerate(f):
+                if rerunidxs and idx == rerunidxs[0]:
+                    print("rennotate", idx)
+                    raw_text_idx = rerunidxs.pop(0)
+                    res = corenlp_annotate(client, pp.format_news(raw_texts[raw_text_idx]))
+                    persister.add_json(configs.NEWSPARSE, res)
+                else:
+                    print("copy", idx, "data")
+                    persister.add_input(configs.NEWSPARSE+".json", l.strip())
+
+            
+
     
 
 
@@ -163,6 +188,7 @@ if __name__ == '__main__':
     # print('Constituency Parsing:', CLI.parse(sentence))
     # print('Dependency Parsing:', CLI.dependency_parse(sentence))
     # close_cli()
+    
     import newsgroups
     from stanza.server import CoreNLPClient
     news = newsgroups.get_news_data()

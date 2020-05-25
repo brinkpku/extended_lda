@@ -57,6 +57,10 @@ def read_parse(json_name=configs.NEWSPARSE):
 if __name__ == "__main__":
     print("read parse")
     parseres = read_parse()
+    failed_idxs = []
     for idx, i in enumerate(parseres):
         if type(i) == str:
-            print(idx)
+            failed_idxs.append(idx)
+    print(failed_idxs)
+    print(len(failed_idxs))
+    

@@ -13,7 +13,7 @@ import utils
 
 WNL = WordNetLemmatizer()
 URL_REG = '(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]'
-EMAIL_REG = "[0-9a-zA-Z_]{0,19}@(?:[0-9a-zA-Z]{1,13}[.])+\w+"
+EMAIL_REG = "[0-9a-zA-Z_.]{0,19}@(?:[0-9a-zA-Z]{1,13}[.])+\w+"
 
 
 def lemmatize(word, pos=None):
@@ -56,7 +56,8 @@ def preprocess_abstract(abstract):
 def format_news(news):
     """ format news, remove unused character
     """
-    news = re.sub("<", " ", news)
+    news = re.sub("[<>]|=+", " ", news)
+    news = re.sub("-{2,}|/{2,}", " ", news)
     news = re.sub(r"\s+", " ", news)
     return news
 
