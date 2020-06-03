@@ -1,6 +1,9 @@
 # !/usr/bin/env python3
 
+import os
 import time
+
+import configs
 
 def timer(func):
     """
@@ -14,6 +17,14 @@ def timer(func):
         return result
     return wrapper
 
+def clear():
+    if os.path.exists(configs.NEWSINPUT):
+        os.remove(configs.NEWSINPUT)
+        print("removed", configs.NEWSINPUT)
+    if os.path.exists(configs.ABSTRACTINPUT):
+        os.remove(configs.ABSTRACTINPUT)
+        print("removed", configs.ABSTRACTINPUT)
+
 
 # reltion 
 DEP2STR = "{} - [{}] - {}" # governor - dep relation - dependent
@@ -22,3 +33,6 @@ DEPENDENTGLOSS = "dependentGloss"
 GOVERNOR = "governor"
 GOVERNORGLOSS = "governorGloss"
 DEP = "dep"
+
+if __name__=="__main__":
+    clear()
