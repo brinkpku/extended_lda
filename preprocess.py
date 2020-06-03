@@ -36,9 +36,10 @@ def get_wordnet_pos(treebank_tag):
         return wordnet.NOUN
 
 
-def preprocess_abstract(abstract):
+def preprocess(abstract):
     '''
-    preprocess abstract as lda input: lower, remove punctuations, tokenize
+    preprocess abstract as lda input: lower, remove punctuations, stopwords, url, email, tokenize
+    remeber to lemmatize text before preprocess.
     :param abstract: str
     :return: list
     '''
@@ -80,6 +81,20 @@ def split2sent(abstract):
     abstract = re.sub(r'\s+', ' ', abstract)
     return sent_tokenize(abstract)
 
+
+def convert_parse2lda_input(parsed):
+    """ use corenlp lemma result as lda input,
+    parsed: dict, stanford corenlp annotated result, use its "sentence" key.
+    return: str, text used as lda input
+    """
+    res = []
+    for sent in parsed["sentences"]:
+        for w in sent["tokens"]:
+            if w["originalText"] in punctuation: # avoid corenlp trans "(" to "-lrb-"
+                res.append(w["originalText"])
+            else:
+                res.append(w["lemma"])
+    return " ".join(res)
 
 if __name__ == "__main__":
     pass

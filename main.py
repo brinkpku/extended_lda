@@ -44,7 +44,7 @@ elif configs.MODE == "init":
     persister.save_json(configs.RAWABSTRACT, raw_data)
 
     print("annotate sentence..")
-    with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='4G') as client:
+    with CoreNLPClient(properties="./corenlp_server.props", timeout=15000, memory='4G') as client:
         for idx, abstract in enumerate(raw_data):
             if idx < int(configs.RECOVERIDX):
                 print("recover", idx)
@@ -52,18 +52,17 @@ elif configs.MODE == "init":
             print("parse {}/{} abstract".format(idx, len(raw_data) - 1))
             res = relation.corenlp_annotate(client, abstract)
             persister.add_json(configs.ABSTRACTPARSE, res)
-    absparse = persister.read_parse()
+    absparse = persister.read_parse(configs.ABSTRACTPARSE)
 
     print("preprocess as lda input..")
     for idx, parsed in enumerate(absparse):
         if type(parsed) == str:
             print("{} no parse result, use raw text instead of lemmatized.".format(idx))
-            handled_text = " ".join(pp.preprocess_abstract(raw_data[idx]))
+            handled_text = " ".join(pp.preprocess(raw_data[idx]))
         else:
             print("convert to lda input:{}/{}".format(idx, len(absparse) - 1))
-            handled_text = " ".join(
-                [" ".join([w["lemma"] for w in sent["tokens"]]) for sent in parsed["sentences"]])
-        preprocessed = pp.preprocess_abstract(handled_text)
+            handled_text = pp.convert_parse2lda_input(parsed)
+        preprocessed = pp.preprocess(handled_text)
         persister.add_input(configs.ABSTRACTINPUT, " ".join(preprocessed))
     lda_input = persister.read_input(configs.ABSTRACTINPUT)
 
@@ -75,4 +74,14 @@ elif configs.MODE == "init":
         lda_input, 'tf', topic_param, vocab)
     persister.persist_lda(configs.ABSTRACTLDA, terms, doc_topic, topic_word)
 
-lda.print_topics(topic_word, terms, doc_topic)
+    lda.print_topics(topic_word, terms, doc_topic)
+
+elif configs.MODE == "rerun":
+    print("get raw data..")
+    raw_data = persister.load_json(configs.RAWABSTRACT)
+    parseres = persister.read_parse(configs.ABSTRACTPARSE)
+    failed_idxs = []
+    for idx, i in enumerate(parseres):
+        if type(i) == str:
+            failed_idxs.append(idx)
+    relation.reannotate(failed_idxs, configs.ABSTRACTPARSE, raw_data)

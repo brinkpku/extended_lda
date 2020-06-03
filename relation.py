@@ -56,21 +56,18 @@ def reannotate(rerunidxs, persist_file, raw_texts):
     raw_texts: list of str, raw data
     """
     os.rename(persist_file+".json", persist_file+".bak")
-    with CoreNLPClient(properties="./corenlp_server.props", timeout=30000, memory='4G', max_char_length=500000) as client:
+    with CoreNLPClient(properties="./corenlp_server.props", timeout=40000, memory='4G', max_char_length=500000) as client:
         with open(persist_file+".bak") as f:
             for idx, l in enumerate(f):
                 if rerunidxs and idx == rerunidxs[0]:
                     print("rennotate", idx)
                     raw_text_idx = rerunidxs.pop(0)
-                    res = corenlp_annotate(client, pp.format_news(raw_texts[raw_text_idx]))
-                    persister.add_json(configs.NEWSPARSE, res)
+                    res = corenlp_annotate(client, raw_texts[raw_text_idx])
+                    persister.add_json(persist_file, res)
                 else:
                     print("copy", idx, "data")
-                    persister.add_input(configs.NEWSPARSE+".json", l.strip())
+                    persister.add_input(persist_file+".json", l.strip())
 
-            
-
-    
 
 
 # relation extraction
