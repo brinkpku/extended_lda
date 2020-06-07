@@ -67,11 +67,9 @@ elif configs.MODE == "init":
     lda_input = persister.read_input(configs.ABSTRACTINPUT)
 
     print("do lda..")
-    # vocab = keywords
-    vocab = None
     topic_param = 20
     terms, doc_topic, topic_word, perplexity = lda.do_lda(
-        lda_input, 'tf', topic_param, vocab)
+        lda_input, 'tf', topic_param)
     persister.persist_lda(configs.ABSTRACTLDA, terms, doc_topic, topic_word)
 
     lda.print_topics(topic_word, terms, doc_topic)

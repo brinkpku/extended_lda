@@ -12,8 +12,8 @@ import utils
 
 
 WNL = WordNetLemmatizer()
-URL_REG = '(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]'
-EMAIL_REG = "[0-9a-zA-Z_.]{0,19}@(?:[0-9a-zA-Z]{1,13}[.])+\w+"
+URL_REG = r'(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]'
+EMAIL_REG = r"[0-9a-zA-Z_.]{0,19}@(?:[0-9a-zA-Z]{1,13}[.])+\w+"
 
 
 def lemmatize(word, pos=None):
@@ -45,7 +45,7 @@ def preprocess(abstract):
     '''
     abstract = re.sub(URL_REG, ' ', abstract)
     abstract = re.sub(EMAIL_REG, " ", abstract)
-    abstract = re.sub('\d+?', ' ', abstract)
+    abstract = re.sub(r'\d+?', ' ', abstract)
     for p in punctuation:
         abstract = re.sub(re.escape(p), ' ', abstract)
     abstract = abstract.lower()
