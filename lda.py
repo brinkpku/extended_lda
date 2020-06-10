@@ -2,6 +2,7 @@
 import utils
 
 import numpy as np
+import pandas as pd
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import GridSearchCV
@@ -100,6 +101,7 @@ def gridsearchCV(parameters, data):
     parameters: dict, model parameters
     data: train data
     return: sklearn.model_selection.GridSearchCV, fit model
+    model.cv_results_ can be visualized by pd.DataFrame
     """
     lda = LatentDirichletAllocation()
     model = GridSearchCV(lda, parameters, n_jobs=-1) # parellel with multi-processors
@@ -128,7 +130,7 @@ def select_model_by_coherence(tf, terms, texts, measure, topic_num, top_n=20, ma
         print("\ttest {} topics, each coherence:{}, avg coherence:{}".format(num, coherences, round(c, 2)))
         c_lst.append(c)
     return best_model, c_lst
-    
+
 
 def get_coherence(tf, terms, topic_word, texts, measure, top_n=20, window_size=None):
     """ use tmtool get coherence
@@ -171,13 +173,14 @@ def print_topics(topic_word, terms, doc_topic, num=20):
             print(":".join([str(iidx), str(doc_topic[iidx][idx])]))
 
 
-def get_topics(topic_word, terms, doc_topic, num=20):
+def get_topics(topic_word, terms, doc_topic, num=20, human_read=True):
     '''
     like print_topics, but return values
     :param topic_word: np.array, topic-word probability
     :param terms: np.array, feature names
     :param doc_topic: np.array, doc-topic probability
     :param num: int, term num/doc num of topic to print
+    human_read: bool, whether round values to make it more readable
     :return: tuple of list.
     '''
     top_terms = []
@@ -186,11 +189,39 @@ def get_topics(topic_word, terms, doc_topic, num=20):
         sort_word_idx = np.argsort(t)
         top_term = []
         for iidx in sort_word_idx[-1:-num - 1:-1]:
-            top_term.append((terms[iidx], t[iidx]))
+            if human_read:
+                top_term.append((terms[iidx], round(t[iidx], 2)))
+            else:
+                top_term.append((terms[iidx], t[iidx]))
         top_terms.append(top_term)
         top_doc = []
         sort_doc_idx = np.argsort(doc_topic[:, idx])
         for iidx in sort_doc_idx[-1:-num - 1:-1]:
-            top_doc.append((iidx, doc_topic[iidx][idx]))
+            if human_read:
+                top_doc.append((iidx, round(doc_topic[iidx][idx], 3)))
+            else:
+                top_doc.append((iidx, doc_topic[iidx][idx]))
         top_docs.append(top_doc)
     return top_terms, top_docs
+
+
+def get_dominant_topic(doc_topic, topic_word):
+    """ assign each doc a topic (highest probability)
+    return: np.array, n samples' dominant topic index
+    use collections.Counter to count doc-topic distribution
+    """
+    return np.argmax(doc_topic, axis=1)
+
+
+# use pandas Show top terms and docs for each topic
+def pd_topics_vis(top_terms, top_docs):
+    """ use pandas visualize top terms and docs
+    return: tuple of pd.DataFrame
+    """
+    df_topic_keywords = pd.DataFrame(top_terms)
+    df_topic_keywords.columns = ['Word '+str(i) for i in range(df_topic_keywords.shape[1])]
+    df_topic_keywords.index = ['Topic '+str(i) for i in range(df_topic_keywords.shape[0])]
+    df_topic_docs = pd.DataFrame(top_docs)
+    df_topic_docs.columns = [' '+str(i) for i in range(df_topic_docs.shape[1])]
+    df_topic_docs.index = ['Topic '+str(i) for i in range(df_topic_docs.shape[0])]
+    return df_topic_keywords, df_topic_docs
