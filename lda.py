@@ -5,6 +5,23 @@ import numpy as np
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.model_selection import GridSearchCV
+from tmtoolkit.topicmod.evaluate import metric_coherence_gensim
+from gensim.corpora.dictionary import Dictionary
+from gensim.models.ldamodel import LdaModel
+
+
+################################
+# model and parameters tunning #
+################################
+@utils.timer
+def gensim_lda(texts):
+    """ use gensim train lda model, not finished
+    texts: list of list of str, tokenized text
+    """
+    dictionary = Dictionary(texts)
+    corpus = [dictionary.doc2bow(text) for text in texts]
+    model = LdaModel(corpus=corpus, id2word=dictionary, iterations=50, num_topics=2)
+    return model
 
 
 @utils.timer
@@ -22,21 +39,20 @@ def do_lda(input_vector, feature_method='tf', topic_num=5, method="online", max_
 
 
 @utils.timer
-def select_model_by_perplexity(input_text, topic_num, min_df=1, max_iter=20, learning_decay=0.7):
+def select_model_by_perplexity(tf, topic_num, max_iter=20, learning_decay=0.7):
     """ compute different model perlexity and save best model
-    input_text: list of str, firstly input_text will be converted to count-vector, then use as lda input
+    tf: list, count-vector
     topic_num: iterator, different topic num
     return: best model, perplexity list
     """
     perplexity_lst = []
     best_model = None
-    tf = extract_feature(input_text, min_df=min_df)
     for num in topic_num:
         _, model = do_lda(tf, topic_num=num, max_iter=max_iter, learning_decay=learning_decay)
         perp = model.perplexity(tf)
         if not perplexity_lst or perp < min(perplexity_lst):
             best_model = model
-        print("\ttest {} topics, perplexity:{}".format(num, perp))
+        print("\ttest {} topics, perplexity:{}".format(num, round(perp, 2)))
         perplexity_lst.append(perp)
     return best_model, perplexity_lst
 
@@ -59,7 +75,7 @@ def extract_feature(input_text, method="tf", min_df=1):
     else:
         print("unknown method")
         return
-    return vector.fit_transform(input_text), vector.get_feature_names()
+    return vector.fit_transform(input_text), np.array(vector.get_feature_names())
 
 
 def generate_lda_parameter(min_topics, max_topics, step, max_iter=[1000]):
@@ -91,6 +107,51 @@ def gridsearchCV(parameters, data):
     return model
 
 
+@utils.timer
+def select_model_by_coherence(tf, terms, texts, measure, topic_num, top_n=20, max_iter=20, learning_decay=0.7):
+    """ use tmtool to compute different model coherence and save best model
+    tf: list, count-vector
+    terms: np.array of str
+    texts: list of list of str, tokenized text
+    measure: str, c_v, u_mass, c_uci, c_npmi
+    topic_num: iterator, different topic num
+    return: best model, coherence list
+    """
+    c_lst = []
+    best_model = None
+    for num in topic_num:
+        _, model = do_lda(tf, topic_num=num, max_iter=max_iter, learning_decay=learning_decay)
+        coherences = get_coherence(tf, terms, model.n_components, texts, measure)
+        c = np.mean(coherences)
+        if not c_lst or c > max(c_lst):
+            best_model = model
+        print("\ttest {} topics, each coherence:{}, avg coherence:{}".format(num, coherences, round(c, 2)))
+        c_lst.append(c)
+    return best_model, c_lst
+    
+
+def get_coherence(tf, terms, topic_word, texts, measure, top_n=20, window_size=None):
+    """ use tmtool get coherence
+    tf: list, count-vector
+    terms: np.array of str
+    texts: list of list of str, tokenized text
+    measure: str, c_v, u_mass, c_uci, c_npmi
+    top_n: int, top words selected from topic
+    window_size: int, c_something method used for compute probability
+    return coherence list
+    """
+    return metric_coherence_gensim(measure=measure, 
+                        top_n=top_n, 
+                        topic_word_distrib=topic_word, 
+                        dtm=tf, 
+                        vocab=terms, 
+                        texts=texts)
+
+
+
+##############################################
+# lda result process, analysis, visulization #
+##############################################
 def print_topics(topic_word, terms, doc_topic, num=20):
     '''
     print topics

@@ -69,6 +69,18 @@ def reannotate(rerunidxs, persist_file, raw_texts):
                     persister.add_input(persist_file+".json", l.strip())
 
 
+def get_parse_failed_idx(persist_file_name):
+    """ get parse failed data index
+    persist_file_name: str, parsed res persist file name
+    return: list, indexs
+    """
+    parseres = read_parse(persist_file_name)
+    failed_idxs = []
+    for idx, i in enumerate(parseres):
+        if type(i) == str:
+            failed_idxs.append(idx)
+    return failed_idxs
+
 
 # relation extraction
 # extract sentence
@@ -104,7 +116,6 @@ def get_word_idx(topic_word, sent):
         if i == topic_word:
             res.append(idx)
     return res
-
 
 
 def sent_contained_word_idxs(sent, topic_words):

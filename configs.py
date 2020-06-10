@@ -26,6 +26,9 @@ ABSTRACTSENTTOKEN = "abstractsenttoken"
 NEWSPARSE = "newsparse"  # corenlp analyse results
 ABSTRACTPARSE = "abstractparse"
 
+# lda model, .model
+NEWSMODEL = "newslda"
+ABSTRACTMODEL = "abstractlda"
 
 # numpy, lda result: terms, doc_topic, topic_word
 ABSTRACTLDA = "abstract_lda"

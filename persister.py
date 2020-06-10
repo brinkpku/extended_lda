@@ -1,6 +1,7 @@
 # !/usr/bin/env python3
 
 import json
+import joblib
 
 import numpy as np
 
@@ -53,6 +54,15 @@ def read_parse(json_name=configs.NEWSPARSE):
         newsparse = f.readlines()
     newsparse = [json.loads(n) for n in newsparse]
     return newsparse
+
+
+# persist lda model
+def save_model(model_name, model):
+    joblib.dump(model, "".join([model_name, ".model"]))
+
+def load_model(model_name):
+    return joblib.load(model_name)
+
 
 if __name__ == "__main__":
     print("read parse")
