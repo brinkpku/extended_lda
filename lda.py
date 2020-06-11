@@ -9,6 +9,7 @@ from sklearn.model_selection import GridSearchCV
 from tmtoolkit.topicmod.evaluate import metric_coherence_gensim
 from gensim.corpora.dictionary import Dictionary
 from gensim.models.ldamodel import LdaModel
+from nltk import word_tokenize
 
 
 ################################
@@ -64,7 +65,7 @@ def extract_feature(input_text, method="tf", min_df=1):
     input_text: list of str, docs in list
     method: str, 'tf' or 'idf'
     min_df: int or float, refer to sklearn.CounVectorizer
-    return: (vector, feature_names)
+    return: (transformed feature, model)
     """
     vector = None
     if method == 'tf':
@@ -76,7 +77,7 @@ def extract_feature(input_text, method="tf", min_df=1):
     else:
         print("unknown method")
         return
-    return vector.fit_transform(input_text), np.array(vector.get_feature_names())
+    return vector.fit_transform(input_text), vector
 
 
 def generate_lda_parameter(min_topics, max_topics, step, max_iter=[1000]):
@@ -110,11 +111,11 @@ def gridsearchCV(parameters, data):
 
 
 @utils.timer
-def select_model_by_coherence(tf, terms, texts, measure, topic_num, top_n=20, max_iter=20, learning_decay=0.7):
+def select_model_by_coherence(tf, terms, input_text, measure, topic_num, top_n=20, max_iter=20, learning_decay=0.7):
     """ use tmtool to compute different model coherence and save best model
     tf: list, count-vector
     terms: np.array of str
-    texts: list of list of str, tokenized text
+    input_text: list of list of str, tokenized text
     measure: str, c_v, u_mass, c_uci, c_npmi
     topic_num: iterator, different topic num
     return: best model, coherence list
@@ -123,7 +124,8 @@ def select_model_by_coherence(tf, terms, texts, measure, topic_num, top_n=20, ma
     best_model = None
     for num in topic_num:
         _, model = do_lda(tf, topic_num=num, max_iter=max_iter, learning_decay=learning_decay)
-        coherences = get_coherence(tf, terms, model.n_components, texts, measure)
+        texts = [word_tokenize(corp) for corp in input_text]
+        coherences = get_coherence(tf, terms, model.components_, texts, measure)
         c = np.mean(coherences)
         if not c_lst or c > max(c_lst):
             best_model = model
@@ -147,7 +149,8 @@ def get_coherence(tf, terms, topic_word, texts, measure, top_n=20, window_size=N
                         topic_word_distrib=topic_word, 
                         dtm=tf, 
                         vocab=terms, 
-                        texts=texts)
+                        texts=texts,
+                        window_size=window_size)
 
 
 
