@@ -27,16 +27,16 @@ def gensim_lda(texts):
 
 
 @utils.timer
-def do_lda(input_vector, feature_method='tf', topic_num=5, method="online", max_iter=20, learning_decay=0.7):
+def do_lda(tf, feature_method='tf', topic_num=5, method="online", max_iter=20, learning_decay=0.7):
     '''
     do lda process
-    :param input_vector: list, sklearn CountVectorizer output
+    :param tf: list, sklearn CountVectorizer output
     :return: tuple of np.array. doc-topic probability, sklearn.decomposition.LatentDirichletAllocation
         topic-word probability and perplexity can be got from model by model.n_components
     '''
     model = LatentDirichletAllocation(n_components=topic_num, learning_method=method, max_iter=max_iter, random_state=0,
                                     batch_size=128, learning_decay=learning_decay)
-    lda_topics = model.fit_transform(input_vector)
+    lda_topics = model.fit_transform(tf)
     return lda_topics, model
 
 

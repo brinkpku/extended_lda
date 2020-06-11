@@ -64,14 +64,16 @@ elif configs.MODE == "init":
             handled_text = pp.convert_parse2lda_input(parsed)
         preprocessed = pp.preprocess(handled_text)
         persister.add_input(configs.ABSTRACTINPUT, " ".join(preprocessed))
-    lda_input = persister.read_input(configs.ABSTRACTINPUT)
+    abs_input = persister.read_input(configs.ABSTRACTINPUT)
 
     print("do lda..")
     topic_param = 20
-    terms, doc_topic, topic_word, perplexity = lda.do_lda(
-        lda_input, 'tf', topic_param)
+    tf, vec_model = lda.extract_feature(abs_input)
+    terms = np.array(vec_model.get_feature_names())
+    doc_topic, lda_model = lda.do_lda(tf, topic_num=topic_param)
+    topic_word = lda_model.components_
     persister.persist_lda(configs.ABSTRACTLDA, terms, doc_topic, topic_word)
-
+    persister.save_model(configs.ABSTRACTMODEL, lda_model)
     lda.print_topics(topic_word, terms, doc_topic)
 
 elif configs.MODE == "rerun":

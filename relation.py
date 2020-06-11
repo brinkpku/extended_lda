@@ -74,7 +74,7 @@ def get_parse_failed_idx(persist_file_name):
     persist_file_name: str, parsed res persist file name
     return: list, indexs
     """
-    parseres = read_parse(persist_file_name)
+    parseres = persister.read_parse(persist_file_name)
     failed_idxs = []
     for idx, i in enumerate(parseres):
         if type(i) == str:

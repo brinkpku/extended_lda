@@ -58,10 +58,10 @@ def read_parse(json_name=configs.NEWSPARSE):
 
 # persist lda model
 def save_model(model_name, model):
-    joblib.dump(model, "".join([model_name, ".model"]))
+    joblib.dump(model, "".join([configs.MODELPATH, model_name, ".model"]))
 
 def load_model(model_name):
-    return joblib.load(model_name)
+    return joblib.load("".join([configs.MODELPATH, model_name, ".model"]))
 
 
 if __name__ == "__main__":
