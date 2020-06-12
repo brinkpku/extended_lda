@@ -9,19 +9,25 @@ import configs
 import persister
 
 
-def plot_line(line_data, labels):
+def plot_line(figurename, line_data, labels, title=None, xlabel=None, ylabel=None, legend_title=None):
     """ plot line
+    figurename: str, name for saved figure
     line_data: list of list of tuple, [line1[(x,y),...],...]
     labels: list of str, label for each line
     """
     plt.figure(figsize=(12, 8))
     for idx, l in enumerate(line_data):
         plt.plot([x[0] for x in l], [y[1] for y in l], label=labels[idx])
-    plt.title("Choosing Optimal LDA Model")
-    plt.xlabel("Num Topics")
-    plt.ylabel("Log Likelyhood Scores")
-    plt.legend(title='Learning decay', loc='best')
-    plt.show()
+    if title:
+        plt.title(title)
+    if xlabel:
+        plt.xlabel(xlabel)
+    if ylabel:
+        plt.ylabel(ylabel)
+    if legend_title:
+        plt.legend(title=legend_title, loc='best')
+    # plt.show()
+    plt.savefig("".join([figurename, ".png"]))
 
 
 def pyLDA(topic_term_dists, doc_topic_dists, doc_lengths, vocab, term_frequency):
@@ -59,4 +65,4 @@ if __name__=="__main__":
         score][2*len(n_topics):3*len(n_topics)]]
 
     # Show graph
-    plot_line([zip(n_topics, log_likelyhoods_5)], ["0.5"])
+    plot_line("test", [list(zip(n_topics, log_likelyhoods_5))], ["0.5"],"Choosing Optimal LDA Model","Num Topics","Log Likelyhood Scores",'Learning decay')

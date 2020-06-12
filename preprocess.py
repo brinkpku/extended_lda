@@ -4,7 +4,7 @@ import re
 from string import punctuation
 
 
-from nltk import word_tokenize, sent_tokenize
+from nltk import word_tokenize, sent_tokenize, pos_tag
 from nltk.stem.wordnet import WordNetLemmatizer
 from nltk.corpus import stopwords, wordnet
 
@@ -34,6 +34,17 @@ def get_wordnet_pos(treebank_tag):
         return wordnet.ADV
     else:
         return wordnet.NOUN
+
+
+def lemma_texts(raw_texts):
+    """ use nltk lemmatization to handle raw texts
+    raw_texts: str, need lightly preprocess, eg. remove empty line (like format_news)
+    return: str, lemmatized text
+    """
+    tokens = pos_tag(word_tokenize(raw_texts))
+    res = [lemmatize(pos_res[0], get_wordnet_pos(pos_res[1])) for pos_res in tokens]
+    return " ".join(res)
+
 
 
 def preprocess(abstract):
@@ -85,7 +96,7 @@ def split2sent(abstract):
 def convert_parse2lda_input(parsed):
     """ use corenlp lemma result as lda input,
     parsed: dict, stanford corenlp annotated result, use its "sentence" key.
-    return: str, text used as lda input
+    return: str, lemmatized text
     """
     res = []
     for sent in parsed["sentences"]:

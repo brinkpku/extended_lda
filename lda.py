@@ -124,8 +124,7 @@ def select_model_by_coherence(tf, terms, input_text, measure, topic_num, top_n=2
     best_model = None
     for num in topic_num:
         _, model = do_lda(tf, topic_num=num, max_iter=max_iter, learning_decay=learning_decay)
-        texts = [word_tokenize(corp) for corp in input_text]
-        coherences = get_coherence(tf, terms, model.components_, texts, measure)
+        coherences = get_coherence(tf, terms, model.components_, input_text, measure)
         c = np.mean(coherences)
         if not c_lst or c > max(c_lst):
             best_model = model
@@ -134,16 +133,17 @@ def select_model_by_coherence(tf, terms, input_text, measure, topic_num, top_n=2
     return best_model, c_lst
 
 
-def get_coherence(tf, terms, topic_word, texts, measure, top_n=20, window_size=None):
+def get_coherence(tf, terms, topic_word, input_text, measure, top_n=20, window_size=None):
     """ use tmtool get coherence
     tf: list, count-vector
     terms: np.array of str
-    texts: list of list of str, tokenized text
+    input_text: list of list of str, preprocessed text
     measure: str, c_v, u_mass, c_uci, c_npmi
     top_n: int, top words selected from topic
     window_size: int, c_something method used for compute probability
     return coherence list
     """
+    texts = [word_tokenize(corp) for corp in input_text]
     return metric_coherence_gensim(measure=measure, 
                         top_n=top_n, 
                         topic_word_distrib=topic_word, 
