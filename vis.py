@@ -9,7 +9,7 @@ import configs
 import persister
 
 
-def plot_line(figurename, line_data, labels, title=None, xlabel=None, ylabel=None, legend_title=None):
+def plot_line(figurename, line_data, labels, title=None, xlabel=None, ylabel=None, legend_title=None, save=True):
     """ plot line
     figurename: str, name for saved figure
     line_data: list of list of tuple, [line1[(x,y),...],...]
@@ -26,8 +26,10 @@ def plot_line(figurename, line_data, labels, title=None, xlabel=None, ylabel=Non
         plt.ylabel(ylabel)
     if legend_title:
         plt.legend(title=legend_title, loc='best')
-    # plt.show()
-    plt.savefig("".join([figurename, ".png"]))
+    if not save:
+        plt.show()
+    else:
+        plt.savefig("".join([figurename, ".png"]))
 
 
 def pyLDA(topic_term_dists, doc_topic_dists, doc_lengths, vocab, term_frequency):
@@ -46,6 +48,7 @@ def pyLDA(topic_term_dists, doc_topic_dists, doc_lengths, vocab, term_frequency)
         The count of each particular term over the entire corpus. The ordering
         of these counts should correspond with `vocab` and `topic_term_dists`.
     """
+    pyLDAvis.enable_notebook(True)
     data = pyLDAvis.prepare(topic_term_dists, doc_topic_dists, doc_lengths, vocab, term_frequency)
     pyLDAvis.show(data)
 

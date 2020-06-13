@@ -4,7 +4,7 @@ import os
 MAX_TRY = 3
 
 
-MODE = os.getenv("mode", "init") # init, load, parse, reparse, preprocess, lda
+MODE = os.getenv("mode", "init") # init, load, parse, reparse, preprocess, tune, lda
 RECOVERIDX = os.getenv("recoveridx", 0)
 USECLI = os.getenv("use_cli", False)
 
@@ -27,9 +27,11 @@ NEWSPARSE = "newsparse"  # corenlp analyse results
 ABSTRACTPARSE = "abstractparse"
 
 # lda model, .model
-NEWSMODEL = "newslda"
-ABSTRACTMODEL = "abstractlda"
+NEWSMODEL = "newslda{}{}{}{}" # learning decay, topic num, coherence method, iter time
+ABSTRACTMODEL = "abstractlda{}{}{}{}"
 MODELPATH = "models/"
+NEWSVEC = "newsvec{}" # min_df
+ABSVEC = "absvec{}"
 
 # numpy, lda result: terms, doc_topic, topic_word
 ABSTRACTLDA = "abstract_lda"

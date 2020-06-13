@@ -27,7 +27,7 @@ def gensim_lda(texts):
 
 
 @utils.timer
-def do_lda(tf, feature_method='tf', topic_num=5, method="online", max_iter=20, learning_decay=0.7):
+def do_lda(tf, feature_method='tf', topic_num=5, method="online", max_iter=200, learning_decay=0.7):
     '''
     do lda process
     :param tf: list, sklearn CountVectorizer output
@@ -80,7 +80,7 @@ def extract_feature(input_text, method="tf", min_df=1):
     return vector.fit_transform(input_text), vector
 
 
-def generate_lda_parameter(min_topics, max_topics, step, max_iter=[1000]):
+def generate_lda_parameter(min_topics, max_topics, step, max_iter=[500]):
     """ generate lda parameter for grid search
     min_topics: int
     max_topics: int
@@ -111,7 +111,7 @@ def gridsearchCV(parameters, data):
 
 
 @utils.timer
-def select_model_by_coherence(tf, terms, input_text, measure, topic_num, top_n=20, max_iter=20, learning_decay=0.7):
+def select_model_by_coherence(tf, terms, input_text, measure, topic_num, top_n=20, max_iter=200, learning_decay=0.7):
     """ use tmtool to compute different model coherence and save best model
     tf: list, count-vector
     terms: np.array of str
@@ -208,7 +208,7 @@ def get_topics(topic_word, terms, doc_topic, num=20, human_read=True):
     return top_terms, top_docs
 
 
-def get_dominant_topic(doc_topic, topic_word):
+def get_dominant_topic(doc_topic):
     """ assign each doc a topic (highest probability)
     return: np.array, n samples' dominant topic index
     use collections.Counter to count doc-topic distribution
