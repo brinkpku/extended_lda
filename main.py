@@ -87,7 +87,7 @@ elif configs.MODE == "preprocess":
 elif configs.MODE == "tune":
     print("do lda..")
     abs_input = persister.read_input(configs.ABSTRACTINPUT)
-    min_df = 3
+    min_df = 1
     measure = "c_v"
     tf, vec_model = lda.extract_feature(abs_input, min_df=min_df)
     terms = np.array(vec_model.get_feature_names())
@@ -100,7 +100,7 @@ elif configs.MODE == "tune":
     c_max = -999
     for r in learning_rates:
         selected_model, c_lst = lda.select_model_by_coherence(
-        tf, terms, abs_input, measure, topic_params, learning_decay=r)
+            tf, terms, abs_input, measure, topic_params, learning_decay=r)
         line_data.append(list(zip(topic_params, c_lst)))
         if max(c_lst) > c_max:
             c_max = max(c_lst)
@@ -108,10 +108,28 @@ elif configs.MODE == "tune":
             best_rate = r
     topic_word = best_model.components_
     doc_topic = best_model.fit_transform(tf)
-    persister.persist_lda(configs.ABSTRACTLDA, terms, doc_topic, topic_word)
-    model_name = configs.ABSTRACTMODEL.format(int(best_rate*10), len(topic_word), measure, best_iter)
+    model_name = configs.ABSTRACTMODEL.format(
+        int(best_rate*10), len(topic_word), measure, best_iter, min_df)
+    persister.persist_lda(configs.ABSTRACTLDA.format(model_name), terms, doc_topic, topic_word)
     persister.save_model(model_name, best_model)
     persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
     lda.print_topics(topic_word, terms, doc_topic)
     vis.plot_line("absnums", line_data, list(map(str, learning_rates)),
                   xlabel="topic num", ylabel="coherence", legend_title="learning decay", title=model_name)
+
+elif configs.MODE == "lda":
+    _rate = .6
+    _iter = 200
+    _num = 4
+    measure = "c_v"
+    min_df = 1
+    model_name = configs.NEWSMODEL.format(int(_rate*10), _num, measure, _iter, min_df)
+    print("train", model_name)
+    news_input = persister.read_input(configs.NEWSINPUT)
+    tf, vec_model = lda.extract_feature(news_input, min_df=min_df)
+    terms = np.array(vec_model.get_feature_names())
+    doc_topic, lda_model = lda.do_lda(tf, topic_num=_num, max_iter=_iter, learning_decay=_rate)
+    persister.persist_lda(configs.NEWSLDA.format(model_name), terms, doc_topic, lda_model.components_)
+    persister.save_model(model_name, lda_model)
+    persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
+    print("Done")

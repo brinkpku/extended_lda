@@ -27,12 +27,12 @@ NEWSPARSE = "newsparse"  # corenlp analyse results
 ABSTRACTPARSE = "abstractparse"
 
 # lda model, .model
-NEWSMODEL = "newslda{}{}{}{}" # learning decay, topic num, coherence method, iter time
-ABSTRACTMODEL = "abstractlda{}{}{}{}"
+NEWSMODEL = "newslda{}{}{}{}{}" # learning decay, topic num, coherence method, iter time, min_df
+ABSTRACTMODEL = "abstractlda{}{}{}{}{}"
 MODELPATH = "models/"
 NEWSVEC = "newsvec{}" # min_df
 ABSVEC = "absvec{}"
 
 # numpy, lda result: terms, doc_topic, topic_word
-ABSTRACTLDA = "abstract_lda"
-NEWSLDA = "news_lda"
+ABSTRACTLDA = "results/{}" # lda model_name
+NEWSLDA = "results/{}"

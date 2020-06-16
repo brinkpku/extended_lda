@@ -18,7 +18,7 @@ if configs.MODE == "load":
     print("load mode..")
     rawnews = persister.load_json(configs.RAWNEWS)
     lda_input = persister.read_input(configs.NEWSINPUT)
-    terms, doc_topic, topic_word = persister.read_lda(configs.NEWSLDA)
+    terms, doc_topic, topic_word = persister.read_lda(configs.NEWSLDA.format("newslda74c_v2001"))
     newsparse = persister.read_parse()
 elif configs.MODE == "init":  # prepare and preprocess raw data
     print("get raw data..")
@@ -73,7 +73,7 @@ elif configs.MODE == "tune":  # lda model tuning
     print("run lda..")
     news_input = persister.read_input(configs.NEWSINPUT)
     min_df = 1
-    measure = "c_v"
+    measure = "u_mass"
     tf, vec_model = lda.extract_feature(news_input, min_df=min_df)
     terms = np.array(vec_model.get_feature_names())
     max_iter_times = [200, 500]
@@ -103,13 +103,30 @@ elif configs.MODE == "tune":  # lda model tuning
             c_lst.append(c)
         line_data.append(list(zip(learning_rates, c_lst)))
     topic_word = best_model.components_
-    persister.persist_lda(configs.NEWSLDA, terms, best_res, topic_word)
-    model_name = configs.NEWSMODEL.format(int(best_rate*10), len(topic_word), measure, best_iter)
+    model_name = configs.NEWSMODEL.format(
+        int(best_rate*10), len(topic_word), measure, best_iter, min_df)
+    persister.persist_lda(configs.NEWSLDA.format(model_name), terms, best_res, topic_word)
     persister.save_model(model_name, best_model)
     persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
     lda.print_topics(topic_word, terms, best_res)
     vis.plot_line("news_iter_learning", line_data, list(map(str, max_iter_times)),
                   xlabel="learning decay", ylabel="coherence", legend_title="iter time", title=model_name)
 
+elif configs.MODE == "lda":
+    _rate = .7
+    _iter = 200
+    _num = 4
+    measure = "c_v"
+    min_df = 1
+    model_name = configs.NEWSMODEL.format(int(_rate*10), _num, measure, _iter, min_df)
+    print("train", model_name)
+    news_input = persister.read_input(configs.NEWSINPUT)
+    tf, vec_model = lda.extract_feature(news_input, min_df=min_df)
+    terms = np.array(vec_model.get_feature_names())
+    doc_topic, lda_model = lda.do_lda(tf, topic_num=_num, max_iter=_iter, learning_decay=_rate)
+    persister.persist_lda(configs.NEWSLDA.format(model_name), terms, doc_topic, lda_model.components_)
+    persister.save_model(model_name, lda_model)
+    persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
+    print("Done")
 else:
     print("unknown mode.")
