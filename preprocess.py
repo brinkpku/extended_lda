@@ -14,7 +14,8 @@ import utils
 WNL = WordNetLemmatizer()
 URL_REG = r'(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]'
 EMAIL_REG = r"[0-9a-zA-Z_.]{0,19}@(?:[0-9a-zA-Z]{1,13}[.])+\w+"
-
+Elsevier = r"\([Cc]\) 20\d\d.+?Elsevier (?:B\.V|Inc|Ltd)\."
+Rights = r"All rights reserved\."
 
 def lemmatize(word, pos=None):
     if pos:
@@ -65,6 +66,16 @@ def preprocess(abstract):
     filtered = [w for w in abstract if w not in stopwords.words('english')]
     return filtered
 
+
+def format_abs(abstract):
+    """ format abstract, remove corps info
+    """
+    abstract = re.sub(Elsevier, " ", abstract)
+    abstract = re.sub(Rights, " ", abstract)
+    abstract = re.sub(r"\s+", " ", abstract)
+    return abstract
+    
+
 def format_news(news):
     """ format news, remove unused character
     """
@@ -94,8 +105,8 @@ def split2sent(abstract):
 
 
 def convert_parse2lda_input(parsed):
-    """ use corenlp lemma result as lda input,
-    parsed: dict, stanford corenlp annotated result, use its "sentence" key.
+    """ use corenlp lemma result as lda input, need to preprocess
+    parsed: dict, stanford corenlp annotated result, use its "sentences" value.
     return: str, lemmatized text
     """
     res = []

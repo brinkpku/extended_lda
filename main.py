@@ -54,7 +54,7 @@ elif configs.MODE == "parse":
                 print("recover", idx)
                 continue
             print("parse {}/{} abstract".format(idx, len(raw_data) - 1))
-            res = relation.corenlp_annotate(client, abstract)
+            res = relation.corenlp_annotate(client, pp.format_abs(abstract))
             persister.add_json(configs.ABSTRACTPARSE, res)
 
 elif configs.MODE == "reparse":
@@ -65,7 +65,7 @@ elif configs.MODE == "reparse":
     for idx, i in enumerate(parseres):
         if type(i) == str:
             failed_idxs.append(idx)
-    relation.reannotate(failed_idxs, configs.ABSTRACTPARSE, raw_data)
+    relation.reannotate(failed_idxs, configs.ABSTRACTPARSE, raw_data, format_func=pp.format_abs)
 
 elif configs.MODE == "preprocess":
     print("preprocess as lda input..")
@@ -120,16 +120,16 @@ elif configs.MODE == "tune":
 elif configs.MODE == "lda":
     _rate = .6
     _iter = 200
-    _num = 4
+    _num = 14
     measure = "c_v"
     min_df = 1
-    model_name = configs.NEWSMODEL.format(int(_rate*10), _num, measure, _iter, min_df)
+    model_name = configs.ABSTRACTMODEL.format(int(_rate*10), _num, measure, _iter, min_df)
     print("train", model_name)
-    news_input = persister.read_input(configs.NEWSINPUT)
-    tf, vec_model = lda.extract_feature(news_input, min_df=min_df)
+    _input = persister.read_input(configs.ABSTRACTINPUT)
+    tf, vec_model = lda.extract_feature(_input, min_df=min_df)
     terms = np.array(vec_model.get_feature_names())
     doc_topic, lda_model = lda.do_lda(tf, topic_num=_num, max_iter=_iter, learning_decay=_rate)
-    persister.persist_lda(configs.NEWSLDA.format(model_name), terms, doc_topic, lda_model.components_)
+    persister.persist_lda(configs.ABSTRACTLDA.format(model_name), terms, doc_topic, lda_model.components_)
     persister.save_model(model_name, lda_model)
-    persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
+    persister.save_model(configs.ABSVEC.format(min_df), vec_model)
     print("Done")

@@ -4,6 +4,7 @@
 find semantic relation from documents
 """
 import os
+from string import punctuation
 
 import utils
 import configs
@@ -49,7 +50,7 @@ def corenlp_annotate(cli, text):
     return errstr
 
 
-def reannotate(rerunidxs, persist_file, raw_texts):
+def reannotate(rerunidxs, persist_file, raw_texts, format_func=pp.format_news):
     """ re annotate failed data
     rerunidxs: list of int, sorted failed idx
     persist_file: str, old persist file
@@ -62,7 +63,7 @@ def reannotate(rerunidxs, persist_file, raw_texts):
                 if rerunidxs and idx == rerunidxs[0]:
                     print("rennotate", idx)
                     raw_text_idx = rerunidxs.pop(0)
-                    res = corenlp_annotate(client, raw_texts[raw_text_idx])
+                    res = corenlp_annotate(client, format_func(raw_texts[raw_text_idx]))
                     persister.add_json(persist_file, res)
                 else:
                     print("copy", idx, "data")
@@ -143,14 +144,31 @@ def min_max(raw_data):
     return SCALER.fit_transform(raw_data)
 
 
+def convert_parse2lemma_sents(parsed):
+    """ convert parse results to lemma sentences, like preprocess.convert_parse2lda_input
+    parsed: dict, stanford corenlp annotated result, use its "sentences" value.
+    return: list of list of str, lemmatized text
+    """
+    res = []
+    for sent in parsed["sentences"]:
+        tmp = []
+        for w in sent["tokens"]:
+            if w["originalText"] in punctuation: # avoid corenlp trans "(" to "-lrb-"
+                tmp.append(w["originalText"])
+            else:
+                tmp.append(w["lemma"])
+        res.append(tmp)
+    return res
+
+
 def extract_important_sents(sents, topic_words, components_values):
     """ extract important sentences idx from a news/abstract by evaluating topic word
     from less important to more important
-    sentences: list, [[lemmatized_word,..],[...]]
+    sents: list, [[lemmatized_word,..],[...]]
     topic_words: list of str
     components_values: np.array, [can be viewed as pseudocount that represents the number of times word
-                                was assigned to topic ], normalized
-    return: tuple. (np.array, importance, count), important sentences idx, importance, count
+                                was assigned to topic ], need to normalize
+    return: tuple. (np.array, importance, count), important sentences idx(sorted), importance, count
     """
     count = []
     importance = []
@@ -167,8 +185,8 @@ def extract_important_sents(sents, topic_words, components_values):
 def extract_word_relation_from_sent(topic_word_idx, parse_res):
     """ get all dependency relation of topic word from one sentence
     topic_word_idx: int, index of topic word in sentence
-    parse_res: list of dict, [sent1{dep parse res}]
-    return: list
+    parse_res: list of dict, dep parse result, [sent1{dep parse res}]
+    return: list of dict
     """
     topic_word_idx += 1 # root node is 0
     relations = []
@@ -179,12 +197,53 @@ def extract_word_relation_from_sent(topic_word_idx, parse_res):
             relations.append(r)
     return relations
 
+
 def convert_relation2str(relation_dict):
     """ convert dep parse result to string
     relation_dict: dict, dep parse result, 
     return: str
     """
     return utils.DEP2STR.format(relation_dict[utils.GOVERNORGLOSS], relation_dict[utils.DEP], relation_dict[utils.DEPENDENTGLOSS])
+
+
+def extract_triples(sent_parse):
+    """ extract triples from a sent
+    sent_parse: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
+    """
+    pass
+
+
+NOUN_PHRASE = "J*[NF]+"
+
+@utils.timer
+def get_phrases_by_pattern(parses):
+    """ 
+    parses: list of dict, corpus parsed results
+    return: list of str
+    """
+    phrases = []
+    for parse in parses:
+        if type(parse) == str:
+            continue
+        for sent in parse["sentences"]:
+            pos = [i["pos"] for i in sent["tokens"]]
+            words = [i["lemma"] for i in sent["tokens"]]
+            _s = _e = 0
+            extension = False
+            for idx, p in enumerate(pos):
+                if extension:
+                    if p.startswith(("N", "F")):
+                        _e = idx+1
+                    elif _s < _e-1: # match phrase
+                        phrases.append(words[_s:_e])
+                        extension = False # rest window status
+                    else:
+                        extension = False
+                else:
+                    if p.startswith(("J", "N", "F")):
+                        _s = idx
+                        extension = True
+    return phrases
 
 
 
