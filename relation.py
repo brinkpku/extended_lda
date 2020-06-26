@@ -3,6 +3,7 @@
 """
 find semantic relation from documents
 """
+import re
 import os
 from string import punctuation
 
@@ -248,6 +249,7 @@ def word_extend_by_pattern(word_idx, sent_tokens):
     word_idx: int, word index in sent
     return: tuple of int, extend word index
     sent_tokens: list of dict, corenlp annotated sentence tokens result
+    return: tuple of int, extended word indexes in sent
     """
     pos = [i["pos"] for i in sent_tokens]
     left = right = word_idx
@@ -269,15 +271,31 @@ def word_extend_by_pattern(word_idx, sent_tokens):
                 left += 1
                 break
     is_nn = pos[word_idx].startswith("N")
-    while right<len(sent_tokens): # 一般只向前搜索
+    if right == len(sent_tokens)-1: # 恰好是最后一个词，需要+1
+        right += 1
+    while right+1<len(sent_tokens): # 一般只向前搜索
         right += 1
         if is_nn and pos[right].startswith("N"):
             continue
         else:
             break
-    if right == len(sent_tokens)-1: # 恰好是最后一个词，需要+1
-        right += 1
     return tuple(range(left, right))
+
+
+def generate_triples(subjs, predicates, objs):
+    """ use permutation and combination to generate triples
+    params: list of tuple
+    return: list of list of tuple
+    """
+    triples = []
+    for s in subjs:
+        for p in predicates:
+            if not objs:
+                triples.append([s, p, None])
+                continue
+            for o in objs:
+                triples.append([s, p, o])
+    return triples
 
 
 def extract_triples_from_sent(sent_deps, sent_tokens):
@@ -286,29 +304,66 @@ def extract_triples_from_sent(sent_deps, sent_tokens):
     sent_tokens: list of dict, corenlp annotated sentence tokens result
     """
     root_idx = sent_deps[0][utils.DEPENDENT] - 1 # real idx in sentence, minus root node(-1)
-    root_relations = extract_word_relation_from_sent(root_idx, sent_deps)
+    root_relations = get_governor_relation(root_idx, sent_deps)
     triples = []
     subjs = []
-    predicates = [root_idx, ]
+    predicate = [(root_idx, )]
     objs = []
     advcls = []
     xcomps = []
     for r in root_relations:
-        if r[utils.DEP].startswith("nsubj"):
-            subjs.append(r[utils.DEPENDENT]-1)
-        elif r[utils.DEP] == "dobj":
-            objs.append(r[utils.DEPENDENT]-1)
+        if r[utils.DEP].startswith("nsubj"): # 主句主语
+            subjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+        elif r[utils.DEP] == "dobj": # 主句直接宾语
+            objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
         elif r[utils.DEP].startswith("nmod"): # 介词短语
-            predicate = (root_idx, root_idx+1)
-            objs.append(r[utils.DEPENDENT]-1)
+            # TODO find way save nmod info
+            objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
         elif r[utils.DEP].startswith("advcl"): # 状语从句
             advcls.append(r)
-        elif r[utils.DEP].startswith("xcomp"): # 补语从句
-            pass
-    if subj and predicate and obj:
-        triples.append([subj, predicate, obj])
+        elif r[utils.DEP].startswith("xcomp"): # 开放补语从句
+            xcomps.append(r)
+    triples.extend(generate_triples(subjs, predicate, objs))
+    # clause extension，暂时只扩展一层从句
+    for pr in advcls: # 状语从句
+        clause_predicate_idx = pr[utils.DEPENDENT] - 1 # 从句谓词句子中索引
+        clause_relations = get_governor_relation(clause_predicate_idx, sent_deps)
+        csubjs = []
+        cpredict = [(clause_predicate_idx, )]
+        cobjs = []
+        for r in clause_relations:
+            if r[utils.DEP].startswith("nsubj"): # 主句主语
+                csubjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+            elif r[utils.DEP] == "dobj": # 主句直接宾语
+                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+            elif r[utils.DEP].startswith("nmod"): # 介词短语
+                nmod = re.findall("nmod:(.+)", r[utils.DEP])
+                if nmod: # TODO find way save nmod info
+                    pass
+                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+        if not csubjs: # 从句没有主语，使用上一层主语
+            csubjs = subjs
+        triples.extend(generate_triples(csubjs, cpredict, cobjs))
+    for xr in xcomps: # 开放补语从句
+        clause_predicate_idx = xr[utils.DEPENDENT] - 1 # 从句谓词句子中索引
+        clause_relations = get_governor_relation(clause_predicate_idx, sent_deps)
+        csubjs = []
+        cpredict = [(clause_predicate_idx, )]
+        cobjs = []
+        for r in clause_relations:
+            if r[utils.DEP].startswith("nsubj"): # 主句主语
+                csubjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+            elif r[utils.DEP] == "dobj": # 主句直接宾语
+                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+            elif r[utils.DEP].startswith("nmod"): # 介词短语
+                nmod = re.findall("nmod:(.+)", r[utils.DEP])
+                if nmod: # TODO find way save nmod info
+                    pass
+                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+        if not csubjs: # 从句没有主语，使用上一层主语
+            csubjs = subjs
+        triples.extend(generate_triples(csubjs, cpredict, cobjs))
     return triples
-
 
 
 NOUN_PHRASE = "J*[NF]+"
