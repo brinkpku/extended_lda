@@ -144,6 +144,20 @@ def min_max(raw_data):
     return SCALER.fit_transform(raw_data)
 
 
+def get_lemma_sent(sent_tokens):
+    """ get lemma sentence from corenlp tokens
+    sent_tokens: list of dict, corenlp annotated sentence tokens result
+    return: list of str, [lemma_word, ...]
+    """
+    tmp = []
+    for w in sent_tokens:
+        if w["originalText"] in punctuation: # avoid corenlp trans "(" to "-lrb-"
+            tmp.append(w["originalText"])
+        else:
+            tmp.append(w["lemma"])
+    return tmp
+
+
 def convert_parse2lemma_sents(parsed):
     """ convert parse results to lemma sentences, like preprocess.convert_parse2lda_input
     parsed: dict, stanford corenlp annotated result, use its "sentences" value.
@@ -151,12 +165,7 @@ def convert_parse2lemma_sents(parsed):
     """
     res = []
     for sent in parsed["sentences"]:
-        tmp = []
-        for w in sent["tokens"]:
-            if w["originalText"] in punctuation: # avoid corenlp trans "(" to "-lrb-"
-                tmp.append(w["originalText"])
-            else:
-                tmp.append(w["lemma"])
+        tmp = get_lemma_sent(sent["tokens"])
         res.append(tmp)
     return res
 
@@ -179,38 +188,107 @@ def extract_important_sents(sents, topic_words, components_values):
         importance.append(sum([normalized_components_values[i][0] for i in contained_word_idxs]))
         count.append(len(contained_word_idxs))
     return np.argsort(importance)[-1::-1], importance, count
-
+    
 
 # extract word relation
-def extract_word_relation_from_sent(topic_word_idx, parse_res):
+def extract_word_relation_from_sent(topic_word_idx, sent_deps):
     """ get all dependency relation of topic word from one sentence
     topic_word_idx: int, index of topic word in sentence
-    parse_res: list of dict, dep parse result, [sent1{dep parse res}]
-    return: list of dict
+    sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
+    return: list of dict, dependencies
     """
     topic_word_idx += 1 # root node is 0
-    relations = []
-    for r in parse_res:
-        if topic_word_idx == r[utils.DEPENDENT]:
-            relations.append(r)
-        elif topic_word_idx == r[utils.GOVERNOR]:
-            relations.append(r)
-    return relations
+    deps = []
+    for dep in sent_deps:
+        if topic_word_idx == dep[utils.DEPENDENT]:
+            deps.append(dep)
+        elif topic_word_idx == dep[utils.GOVERNOR]:
+            deps.append(dep)
+    return deps
 
 
-def convert_relation2str(relation_dict):
+def get_word_dep_by_idx(word_idx, sent_deps):
+    """ get word dependency by real index
+    word_idx: int, word index in sentence
+    sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
+    return: int, word dependency index
+    """
+    word_idx += 1 # root node is 0
+    for idx, dep in enumerate(sent_deps):
+        if dep[utils.DEPENDENT] == word_idx:
+            return idx
+
+
+def convert_relation2str(dep):
     """ convert dep parse result to string
-    relation_dict: dict, dep parse result, 
+    dep: dict, dep parse result
     return: str
     """
-    return utils.DEP2STR.format(relation_dict[utils.GOVERNORGLOSS], relation_dict[utils.DEP], relation_dict[utils.DEPENDENTGLOSS])
+    return utils.DEP2STR.format(dep[utils.GOVERNORGLOSS], dep[utils.DEP], dep[utils.DEPENDENTGLOSS])
 
 
-def extract_triples(sent_parse):
-    """ extract triples from a sent
-    sent_parse: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
+def word_extend_by_pattern(word_idx, sent_tokens):
+    """ use pos pattern to extend words, usually for subj and obj
+    word_idx: int, word index in sent
+    return: tuple of int, extend word index
+    sent_tokens: list of dict, corenlp annotated sentence tokens result
     """
-    pass
+    pos = [i["pos"] for i in sent_tokens]
+    left = right = word_idx
+    is_nn = pos[word_idx].startswith("N")
+    while left>0:
+        left -= 1
+        if is_nn:
+            if pos[left].startswith("N"):
+                continue
+            elif pos[left].startswith("J"):
+                is_nn = False
+            else:
+                left += 1
+                break
+        else:
+            if pos[left].startswith("J"):
+                continue
+            else:
+                left += 1
+                break
+    is_nn = pos[word_idx].startswith("N")
+    while right<len(sent_tokens): # 一般只向前搜索
+        right += 1
+        if is_nn and pos[right].startswith("N"):
+            continue
+        else:
+            break
+    if right == len(sent_tokens)-1: # 恰好是最后一个词，需要+1
+        right += 1
+    return tuple(range(left, right))
+
+
+def extract_triples_from_sent(sent_deps, sent_tokens):
+    """ extract triples from a sent
+    sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
+    sent_tokens: list of dict, corenlp annotated sentence tokens result
+    """
+    root_idx = sent_deps[0][utils.DEPENDENT] - 1 # real idx in sentence, minus root node(-1)
+    root_relations = extract_word_relation_from_sent(root_idx, sent_deps)
+    triples = []
+    predicate = (root_idx)
+    subj = obj =  None
+    for r in root_relations:
+        if r[utils.DEP]=="nsubj":
+            subj = word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens)
+        elif r[utils.DEP] == "dobj":
+            obj = word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens)
+        elif r[utils.DEP].startswith("nmod"): # 介词短语
+            predicate = (root_idx, root_idx+1)
+            obj = word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens)
+        elif r[utils.DEP].startswith("advcl"): # 状语从句
+            pass
+        elif r[utils.DEP].startswith("xcomp"): # 补语从句
+            pass
+    triples.append([subj, predicate, obj])
+    return triples
+
 
 
 NOUN_PHRASE = "J*[NF]+"
