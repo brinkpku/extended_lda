@@ -2,6 +2,7 @@
 
 import os
 import time
+import sys
 
 import configs
 
@@ -24,6 +25,11 @@ def clear():
     if os.path.exists(configs.ABSTRACTINPUT):
         os.remove(configs.ABSTRACTINPUT)
         print("removed", configs.ABSTRACTINPUT)
+
+
+def Dprint(*objects, sep=' ', end='\n', file=sys.stdout, flush=False):
+    if configs.DEBUG:
+        print(*objects, sep=sep, end=end, file=file, flush=flush)
 
 
 # reltion 

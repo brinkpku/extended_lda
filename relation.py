@@ -191,32 +191,48 @@ def extract_important_sents(sents, topic_words, components_values):
     
 
 # extract word relation
-def extract_word_relation_from_sent(topic_word_idx, sent_deps):
-    """ get all dependency relation of topic word from one sentence
-    topic_word_idx: int, index of topic word in sentence
+def extract_word_relation_from_sent(word_idx, sent_deps):
+    """ 废弃，现在使用get_governor_relation和get_dependent_relation. 
+    get all dependency relation of topic word from one sentence
+    word_idx: int, index of topic word in sentence
     sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
     return: list of dict, dependencies
     """
-    topic_word_idx += 1 # root node is 0
+    word_idx += 1 # root node is 0
     deps = []
     for dep in sent_deps:
-        if topic_word_idx == dep[utils.DEPENDENT]:
+        if word_idx == dep[utils.DEPENDENT]:
             deps.append(dep)
-        elif topic_word_idx == dep[utils.GOVERNOR]:
+        elif word_idx == dep[utils.GOVERNOR]:
             deps.append(dep)
     return deps
 
 
-def get_word_dep_by_idx(word_idx, sent_deps):
-    """ get word dependency by real index
-    word_idx: int, word index in sentence
+def get_governor_relation(word_idx, sent_deps):
+    """ 提取指定词语支配的所有关系。
+    word_idx: int, index of topic word in sentence
     sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
-    return: int, word dependency index
+    return: list of dict, govern dependencies
     """
     word_idx += 1 # root node is 0
-    for idx, dep in enumerate(sent_deps):
+    deps = []
+    for dep in sent_deps:
+        if word_idx == dep[utils.GOVERNOR]:
+            deps.append(dep)
+    return deps
+
+
+def get_dependent_relation(word_idx, sent_deps):
+    """ 获取指定词语的依赖关系，与get_governor_relation组合得到全部依存关系。
+    get word dependency by real index
+    word_idx: int, word index in sentence
+    sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
+    return: dict, word dependency
+    """
+    word_idx += 1 # root node is 0
+    for dep in sent_deps:
         if dep[utils.DEPENDENT] == word_idx:
-            return idx
+            return dep
 
 
 def convert_relation2str(dep):
@@ -272,21 +288,25 @@ def extract_triples_from_sent(sent_deps, sent_tokens):
     root_idx = sent_deps[0][utils.DEPENDENT] - 1 # real idx in sentence, minus root node(-1)
     root_relations = extract_word_relation_from_sent(root_idx, sent_deps)
     triples = []
-    predicate = (root_idx)
-    subj = obj =  None
+    subjs = []
+    predicates = [root_idx, ]
+    objs = []
+    advcls = []
+    xcomps = []
     for r in root_relations:
-        if r[utils.DEP]=="nsubj":
-            subj = word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens)
+        if r[utils.DEP].startswith("nsubj"):
+            subjs.append(r[utils.DEPENDENT]-1)
         elif r[utils.DEP] == "dobj":
-            obj = word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens)
+            objs.append(r[utils.DEPENDENT]-1)
         elif r[utils.DEP].startswith("nmod"): # 介词短语
             predicate = (root_idx, root_idx+1)
-            obj = word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens)
+            objs.append(r[utils.DEPENDENT]-1)
         elif r[utils.DEP].startswith("advcl"): # 状语从句
-            pass
+            advcls.append(r)
         elif r[utils.DEP].startswith("xcomp"): # 补语从句
             pass
-    triples.append([subj, predicate, obj])
+    if subj and predicate and obj:
+        triples.append([subj, predicate, obj])
     return triples
 
 

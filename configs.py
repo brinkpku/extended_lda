@@ -2,7 +2,7 @@
 import os
 
 MAX_TRY = 3
-
+DEBUG = os.getenv("debug", True)
 
 MODE = os.getenv("mode", "init") # init, load, parse, reparse, preprocess, tune, lda
 RECOVERIDX = os.getenv("recoveridx", 0)
