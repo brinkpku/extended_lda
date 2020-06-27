@@ -366,6 +366,20 @@ def extract_triples_from_sent(sent_deps, sent_tokens):
     return triples
 
 
+def evaluate_topic_triple(lemma_triple, topic_words, components_values):
+    """ caculate importance of triple for topic. metrics like extract_important_sents
+    lemma_triple: list of str, lemmatized words of triple
+    return: float, importance score
+    """
+    importance = .0
+    normalized_components_values = min_max([[c] for c in components_values])
+    for lemma in lemma_triple:
+        if lemma in topic_words:
+            idx = topic_words.index(lemma)
+            importance += normalized_components_values[idx][0]
+    return importance
+
+
 NOUN_PHRASE = "J*[NF]+"
 
 @utils.timer
