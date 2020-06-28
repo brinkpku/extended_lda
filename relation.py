@@ -282,12 +282,101 @@ def word_extend_by_pattern(word_idx, sent_tokens):
     return tuple(range(left, right))
 
 
+NMOD = ["in", "at", "from", "through", "to", "on", "of", "about", "over", "for", "as", "with", "without"]
+def word_extend_by_relation(word_idx, sent_deps):
+    """ use relation to extend words, usually for subj and obj
+    simply, nmod:xx only extend once
+    return: tuple of int, extended word indexes in sent
+    """
+    res = [word_idx,]
+    word_relations = get_governor_relation(word_idx, sent_deps)
+    for r in word_relations:
+        if r[utils.DEP] == "compound" or r[utils.DEP] == "amod":
+            res.append(r[utils.DEPENDENT]-1)
+        elif r[utils.DEP].startswith("nmod"):
+            nmod = re.findall("nmod:(.+)", r[utils.DEP])
+            if nmod and nmod in NMOD:
+                secondary_relations = get_governor_relation(r[utils.DEPENDENT]-1, sent_deps)
+                for sr in secondary_relations:
+                    if sr[utils.DEP] == "case":
+                        res.append(sr[utils.DEPENDENT]-1) # 介词
+                        res.append(r[utils.DEPENDENT]-1) # 修饰的名词
+                        break
+        elif r[utils.DEP].startswith("conj") or r[utils.DEP] == "cc": # 并列关系
+            res.append(r[utils.DEPENDENT] - 1)
+    return tuple(sorted(res))
+
+
+def predicate_extend(word_idx, sent_deps, predicate):
+    """ 原地扩展动词为 动词+介词 或 动词并列形式
+    """
+    res = [word_idx,]
+    word_relations = get_governor_relation(word_idx, sent_deps)
+    for r in word_relations:
+        if r[utils.DEP].startswith("nmod"):
+            nmod = re.findall("nmod:(.+)", r[utils.DEP])
+            if nmod and nmod in NMOD:
+                secondary_relations = get_governor_relation(r[utils.DEPENDENT]-1, sent_deps)
+                for sr in secondary_relations:
+                    if sr[utils.DEP] == "case" and sr[utils.DEPENDENT] == r[utils.GOVERNOR]+1:#动词介词相邻
+                        res.append(sr[utils.DEPENDENT]-1)
+                        break
+        elif r[utils.DEP] == "compound:prt":
+            res.append(r[utils.DEPENDENT] - 1)
+        # elif r[utils.DEP].startswith("conj") or r[utils.DEP] == "cc": # 并列关系
+        #     res.append(r[utils.DEPENDENT] - 1)
+    predicate = [tuple(sorted(res))]
+
+
+def tuple_contain(longer, shorter):
+    """ judge one tuple whether contains another tuple
+    """
+    if len(longer) < len(shorter):
+        longer, shorter = shorter, longer
+    l = s = 0
+    match = False
+    while l<len(longer):
+        if s == len(shorter):
+            return True
+        if longer[l] == shorter[s]:
+            if not match:
+                match = True
+        else:
+            if match:
+                match = False
+            s = 0
+        l += 1
+        s += 1
+    return False
+        
+
+def combine_words(lst_of_tuple):
+    """ 合并存在包含关系的成分
+    """
+    mask = [True]*len(lst_of_tuple)
+    idx = 0
+    while idx<len(lst_of_tuple):
+        iidx = idx + 1
+        while iidx < len(lst_of_tuple):
+            if tuple_contain(lst_of_tuple[idx], lst_of_tuple[iidx]):
+                if len(lst_of_tuple[idx]) >= len(lst_of_tuple[iidx]):
+                    mask[iidx] = False
+                else:
+                    mask[idx] = False
+            iidx += 1
+        idx +=1
+    return [t for idx, t in enumerate(lst_of_tuple) if mask[idx]]      
+
+
 def generate_triples(subjs, predicates, objs):
     """ use permutation and combination to generate triples
     params: list of tuple
     return: list of list of tuple
     """
     triples = []
+    subjs = combine_words(subjs)
+    predicates = combine_words(predicates)
+    objs = combine_words(objs)
     for s in subjs:
         for p in predicates:
             if not objs:
@@ -298,71 +387,61 @@ def generate_triples(subjs, predicates, objs):
     return triples
 
 
-def extract_triples_from_sent(sent_deps, sent_tokens):
+def extract_triples_from_sent(sent_deps, sent_tokens, use_relation=False):
     """ extract triples from a sent
     sent_deps: list of dict, corenlp enhancedPlusPlusDependencies reslut of one sent
     sent_tokens: list of dict, corenlp annotated sentence tokens result
+    use_relation: bool, decide word extend method
     """
-    root_idx = sent_deps[0][utils.DEPENDENT] - 1 # real idx in sentence, minus root node(-1)
-    root_relations = get_governor_relation(root_idx, sent_deps)
     triples = []
-    subjs = []
-    predicate = [(root_idx, )]
-    objs = []
-    advcls = []
-    xcomps = []
-    for r in root_relations:
-        if r[utils.DEP].startswith("nsubj"): # 主句主语
-            subjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-        elif r[utils.DEP] == "dobj": # 主句直接宾语
-            objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-        elif r[utils.DEP].startswith("nmod"): # 介词短语
-            # TODO find way save nmod info
-            objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-        elif r[utils.DEP].startswith("advcl"): # 状语从句
-            advcls.append(r)
-        elif r[utils.DEP].startswith("xcomp"): # 开放补语从句
-            xcomps.append(r)
-    triples.extend(generate_triples(subjs, predicate, objs))
-    # clause extension，暂时只扩展一层从句
-    for pr in advcls: # 状语从句
-        clause_predicate_idx = pr[utils.DEPENDENT] - 1 # 从句谓词句子中索引
-        clause_relations = get_governor_relation(clause_predicate_idx, sent_deps)
-        csubjs = []
-        cpredict = [(clause_predicate_idx, )]
-        cobjs = []
-        for r in clause_relations:
+    root_idx = sent_deps[0][utils.DEPENDENT] - 1 # real idx in sentence, minus root node(-1)
+    roots = [root_idx,] # 句子支配词，用于迭代主句和从句
+    last_subjs = []
+    in_clause = False
+    while roots:
+        predicate_idx = roots.pop(0) # 用队列维护句子层次
+        subjs = []
+        predicate = [(predicate_idx, )]
+        objs = []
+        root_relations = get_governor_relation(predicate_idx, sent_deps)
+        not_cop = True
+        for r in root_relations:
             if r[utils.DEP].startswith("nsubj"): # 主句主语
-                csubjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+                if use_relation:
+                    subjs.append(word_extend_by_relation(r[utils.DEPENDENT]-1, sent_deps))
+                else:
+                    subjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
             elif r[utils.DEP] == "dobj": # 主句直接宾语
-                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+                if use_relation:
+                    objs.append(word_extend_by_relation(r[utils.DEPENDENT]-1, sent_deps))
+                else:
+                    objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+            elif r[utils.DEP] == "cop":
+                not_cop = False
+                predicate = [(r[utils.DEPENDENT] - 1, )]
+                # 主系表结构中支配词实际为表语
+                if use_relation:
+                    objs.append(word_extend_by_relation(r[utils.GOVERNOR]-1, sent_deps))
+                else:
+                    objs.append(word_extend_by_pattern(r[utils.GOVERNOR]-1, sent_tokens))
             elif r[utils.DEP].startswith("nmod"): # 介词短语
                 nmod = re.findall("nmod:(.+)", r[utils.DEP])
-                if nmod: # TODO find way save nmod info
-                    pass
-                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-        if not csubjs: # 从句没有主语，使用上一层主语
-            csubjs = subjs
-        triples.extend(generate_triples(csubjs, cpredict, cobjs))
-    for xr in xcomps: # 开放补语从句
-        clause_predicate_idx = xr[utils.DEPENDENT] - 1 # 从句谓词句子中索引
-        clause_relations = get_governor_relation(clause_predicate_idx, sent_deps)
-        csubjs = []
-        cpredict = [(clause_predicate_idx, )]
-        cobjs = []
-        for r in clause_relations:
-            if r[utils.DEP].startswith("nsubj"): # 主句主语
-                csubjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-            elif r[utils.DEP] == "dobj": # 主句直接宾语
-                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-            elif r[utils.DEP].startswith("nmod"): # 介词短语
-                nmod = re.findall("nmod:(.+)", r[utils.DEP])
-                if nmod: # TODO find way save nmod info
-                    pass
-                cobjs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
-        if not csubjs: # 从句没有主语，使用上一层主语
-            csubjs = subjs
-        triples.extend(generate_triples(csubjs, cpredict, cobjs))
+                if nmod and nmod in NMOD and not_cop: 
+                    # 当主系表结构当前支配词并非动词，不需要扩展；其介词关系在cop中扩展
+                    predicate_extend(predicate_idx, sent_deps, predicate)
+                    if use_relation:
+                        objs.append(word_extend_by_relation(r[utils.DEPENDENT]-1, sent_deps))
+                    else:
+                        objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
+            elif r[utils.DEP].startswith(("advcl", "xcomp", "ccomp")): # 状语从句、开放补语从句、补语从句
+                roots.append(r[utils.DEPENDENT] - 1)
+                last_subjs.append(subjs) # 将上一层主语列表的引用存储在队列中，同步更新上一层主语信息
+        if in_clause:
+            last_subj = last_subjs.pop(0) # 队列维护上一层主语信息，与从句信息一一对应
+            if not subjs: # 从句没有主语，使用上一层主语
+                subjs = last_subj
+        triples.extend(generate_triples(subjs, predicate, objs))
+        in_clause = True # 除了第一次循环，其余都是从句
     return triples
 
 
