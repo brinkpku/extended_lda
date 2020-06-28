@@ -325,7 +325,7 @@ def predicate_extend(word_idx, sent_deps, predicate):
             res.append(r[utils.DEPENDENT] - 1)
         # elif r[utils.DEP].startswith("conj") or r[utils.DEP] == "cc": # 并列关系
         #     res.append(r[utils.DEPENDENT] - 1)
-    predicate = [tuple(sorted(res))]
+    predicate[0] = tuple(sorted(res))
 
 
 def tuple_contain(longer, shorter):
