@@ -295,7 +295,7 @@ def word_extend_by_relation(word_idx, sent_deps):
             res.append(r[utils.DEPENDENT]-1)
         elif r[utils.DEP].startswith("nmod"):
             nmod = re.findall("nmod:(.+)", r[utils.DEP])
-            if nmod and nmod in NMOD:
+            if nmod and nmod[0] in NMOD:
                 secondary_relations = get_governor_relation(r[utils.DEPENDENT]-1, sent_deps)
                 for sr in secondary_relations:
                     if sr[utils.DEP] == "case":
@@ -315,7 +315,7 @@ def predicate_extend(word_idx, sent_deps, predicate):
     for r in word_relations:
         if r[utils.DEP].startswith("nmod"):
             nmod = re.findall("nmod:(.+)", r[utils.DEP])
-            if nmod and nmod in NMOD:
+            if nmod and nmod[0] in NMOD:
                 secondary_relations = get_governor_relation(r[utils.DEPENDENT]-1, sent_deps)
                 for sr in secondary_relations:
                     if sr[utils.DEP] == "case" and sr[utils.DEPENDENT] == r[utils.GOVERNOR]+1:#动词介词相邻
@@ -426,7 +426,7 @@ def extract_triples_from_sent(sent_deps, sent_tokens, use_relation=False):
                     objs.append(word_extend_by_pattern(r[utils.GOVERNOR]-1, sent_tokens))
             elif r[utils.DEP].startswith("nmod"): # 介词短语
                 nmod = re.findall("nmod:(.+)", r[utils.DEP])
-                if nmod and nmod in NMOD and not_cop: 
+                if nmod and nmod[0] in NMOD and not_cop: 
                     # 当主系表结构当前支配词并非动词，不需要扩展；其介词关系在cop中扩展
                     predicate_extend(predicate_idx, sent_deps, predicate)
                     if use_relation:
