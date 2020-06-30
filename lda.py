@@ -184,7 +184,7 @@ def get_topics(topic_word, terms, doc_topic, num=20, human_read=True):
     :param doc_topic: np.array, doc-topic probability
     :param num: int, term num/doc num of topic to print
     human_read: bool, whether round values to make it more readable
-    :return: tuple of list.
+    :return: tuple of list of tuple. (idx, value)
     '''
     top_terms = []
     top_docs = []
@@ -193,9 +193,9 @@ def get_topics(topic_word, terms, doc_topic, num=20, human_read=True):
         top_term = []
         for iidx in sort_word_idx[-1:-num - 1:-1]:
             if human_read:
-                top_term.append((terms[iidx], round(t[iidx], 2)))
+                top_term.append((iidx, round(t[iidx], 2)))
             else:
-                top_term.append((terms[iidx], t[iidx]))
+                top_term.append((iidx, t[iidx]))
         top_terms.append(top_term)
         top_doc = []
         sort_doc_idx = np.argsort(doc_topic[:, idx])

@@ -6,6 +6,7 @@ find semantic relation from documents
 import re
 import os
 from string import punctuation
+from functools import reduce
 
 import utils
 import configs
@@ -457,6 +458,68 @@ def evaluate_topic_triple(lemma_triple, topic_words, components_values):
             idx = topic_words.index(lemma)
             importance += normalized_components_values[idx][0]
     return importance
+
+
+def extend_lda_results(parse_results, top_terms, top_docs, terms, res_format="originalText", top_n=-1):
+    """ extend lda result to triples by relation parse and information extraction
+    parse_results: list of dict, corpus corenlp parse result
+    top_terms: list of list of tuple, lda get_topics result
+    top_docs: list of list of tuple, lda get_topics result
+    terms: np.array of str, vocabulary
+    return: list of list of tuple, (triple(list of list of str), float score)
+    """
+    if res_format not in ["originalText", "lemma"]:
+        raise ValueError("format support 'originalText' or 'originalText'")
+    all_triples = []
+    for t_idx, topic_res in enumerate(top_docs):
+        topic_triples = []
+        scores = []
+        topic_terms = [terms[x[0]] for x in top_terms[t_idx]]
+        topic_components = [x[1] for x in top_terms[t_idx]]
+        for top_doc in topic_res:
+            doc_idx = top_doc[0]
+            if type(parse_results[doc_idx]) is str:
+                print(doc_idx, "parse", "err")
+                continue
+            sents = convert_parse2lemma_sents(parse_results[doc_idx])
+            sort_idxs, importance, _ = extract_important_sents(sents, 
+                [terms[x[0]] for x in top_terms[t_idx]], [x[1] for x in top_terms[t_idx]])
+            for i in sort_idxs:
+                if importance[i]>0:
+                    sent_tokens = parse_results[doc_idx]["sentences"][i]["tokens"]
+                    sent_deps = parse_results[doc_idx]["sentences"][i]["enhancedPlusPlusDependencies"]
+                    triples = extract_triples_from_sent(sent_deps, sent_tokens, use_relation=True)
+                    for triple in triples:
+                        if None in triple:
+                            continue
+                        extract_res = [
+                                        [sent_tokens[i][res_format] for i in triple[0]],
+                                        [sent_tokens[i][res_format] for i in triple[1]],
+                                        [sent_tokens[i][res_format] for i in triple[2]],
+                                    ]
+                        topic_triples.append(extract_res)
+                        lemma_triple = None
+                        if res_format == "lemma":
+                            lemma_triple = extract_res
+                        else:
+                            lemma_triple = [
+                                        [sent_tokens[i]["lemma"] for i in triple[0]],
+                                        [sent_tokens[i]["lemma"] for i in triple[1]],
+                                        [sent_tokens[i]["lemma"] for i in triple[2]],
+                                    ]
+                        s = evaluate_topic_triple(reduce(lambda a,b:a+b, lemma_triple), topic_terms, topic_components)
+                        scores.append(s)
+        filtered_triples = []
+        for idx in np.argsort(scores)[-1::-1]:
+            if scores[idx]>0:
+                filtered_triples.append((topic_triples[idx], scores[idx]))
+            else:
+                break
+        if top_n < 0:
+            all_triples.append(filtered_triples)
+        else:
+            all_triples.append(filtered_triples[:top_n])
+    return all_triples
 
 
 NOUN_PHRASE = "J*[NF]+"
