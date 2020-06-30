@@ -469,12 +469,24 @@ def get_topic_term_frequency(topic_texts, min_df=1):
     return tf.toarray().sum(axis=0), vector
 
 
+def get_topic_ter_tfidf(topic_texts, min_df=1):
+    vector = TfidfVectorizer(ngram_range=(1, 1), stop_words='english', min_df=min_df)
+    vector.build_analyzer()
+    tfidf = vector.fit_transform(topic_texts)
+    return tfidf.toarray().sum(axis=0), vector
+
+
+
 def score_tf(lemma_triple, frequency, vec_tf):
     """ 三元组中词语在该话题top文章中出现的频次之和
     """
     idxs = evaluate.filter_triple2term_idx(lemma_triple, vec_tf)
     return sum([frequency[i] for i in idxs])
 
+
+def score_tfidf(lemma_triple, tfidf, vec_tfidf):
+    idxs = evaluate.filter_triple2term_idx(lemma_triple, vec_tfidf)
+    return sum([tfidf[i] for i in idxs])
 
 
 def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, res_format="originalText", top_n=-1, score_method="basic"):
@@ -486,6 +498,8 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
     terms: np.array of str, vocabulary
     score_method: str, 'basic', 'tf', 'itf' 
         basic is simplest, use evaluate_topic_triple
+        tf: score_tf
+        tfidf: score_tf_idf
     return: list of list of tuple, (triple(list of list of str), float score)
     """
     if res_format not in ["originalText", "lemma"]:
@@ -498,6 +512,7 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
         topic_components = [x[1] for x in top_terms[t_idx]]
         topic_texts = [input_text[top_doc[0]] for top_doc in topic_res]
         topic_term_fre, vec_tf = get_topic_term_frequency(topic_texts)
+        tfidf, vec_tfidf = get_topic_ter_tfidf(topic_texts)
         for top_doc in topic_res:
             doc_idx = top_doc[0]
             if type(parse_results[doc_idx]) is str:
@@ -533,6 +548,8 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
                             s = evaluate_topic_triple(reduce(lambda a,b:a+b, lemma_triple), topic_terms, topic_components)
                         elif score_method == "tf":
                             s = score_tf(lemma_triple, topic_term_fre, vec_tf)
+                        elif score_method == "tfidf":
+                            s = score_tfidf(lemma_triple, tfidf, vec_tfidf)
                         else:
                             raise ValueError("unkown score method")
                         scores.append(s)
