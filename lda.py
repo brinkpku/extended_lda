@@ -59,7 +59,6 @@ def select_model_by_perplexity(tf, topic_num, max_iter=20, learning_decay=0.7):
     return best_model, perplexity_lst
 
 
-@utils.timer
 def extract_feature(input_text, method="tf", min_df=1):
     """ extract text feature, support tf and tf*idf
     input_text: list of str, docs in list

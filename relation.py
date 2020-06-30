@@ -12,11 +12,13 @@ import utils
 import configs
 import preprocess as pp
 import persister
+import evaluate
 
 import numpy as np
 from stanfordcorenlp import StanfordCoreNLP
 from stanza.server import CoreNLPClient
 from sklearn.preprocessing import MinMaxScaler
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 # corenlp api
 if configs.USECLI:
@@ -460,12 +462,30 @@ def evaluate_topic_triple(lemma_triple, topic_words, components_values):
     return importance
 
 
-def extend_lda_results(parse_results, top_terms, top_docs, terms, res_format="originalText", top_n=-1):
+def get_topic_term_frequency(topic_texts, min_df=1):
+    vector = CountVectorizer(ngram_range=(1, 1), stop_words='english', min_df=min_df)
+    vector.build_analyzer()
+    tf = vector.fit_transform(topic_texts)
+    return tf.toarray().sum(axis=0), vector
+
+
+def score_tf(lemma_triple, frequency, vec_tf):
+    """ 三元组中词语在该话题top文章中出现的频次之和
+    """
+    idxs = evaluate.filter_triple2term_idx(lemma_triple, vec_tf)
+    return sum([frequency[i] for i in idxs])
+
+
+
+def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, res_format="originalText", top_n=-1, score_method="basic"):
     """ extend lda result to triples by relation parse and information extraction
     parse_results: list of dict, corpus corenlp parse result
+    input_text: list of str, docs in list
     top_terms: list of list of tuple, lda get_topics result
     top_docs: list of list of tuple, lda get_topics result
     terms: np.array of str, vocabulary
+    score_method: str, 'basic', 'tf', 'itf' 
+        basic is simplest, use evaluate_topic_triple
     return: list of list of tuple, (triple(list of list of str), float score)
     """
     if res_format not in ["originalText", "lemma"]:
@@ -476,6 +496,8 @@ def extend_lda_results(parse_results, top_terms, top_docs, terms, res_format="or
         scores = []
         topic_terms = [terms[x[0]] for x in top_terms[t_idx]]
         topic_components = [x[1] for x in top_terms[t_idx]]
+        topic_texts = [input_text[top_doc[0]] for top_doc in topic_res]
+        topic_term_fre, vec_tf = get_topic_term_frequency(topic_texts)
         for top_doc in topic_res:
             doc_idx = top_doc[0]
             if type(parse_results[doc_idx]) is str:
@@ -507,7 +529,12 @@ def extend_lda_results(parse_results, top_terms, top_docs, terms, res_format="or
                                         [sent_tokens[i]["lemma"] for i in triple[1]],
                                         [sent_tokens[i]["lemma"] for i in triple[2]],
                                     ]
-                        s = evaluate_topic_triple(reduce(lambda a,b:a+b, lemma_triple), topic_terms, topic_components)
+                        if score_method == "basic": 
+                            s = evaluate_topic_triple(reduce(lambda a,b:a+b, lemma_triple), topic_terms, topic_components)
+                        elif score_method == "tf":
+                            s = score_tf(lemma_triple, topic_term_fre, vec_tf)
+                        else:
+                            raise ValueError("unkown score method")
                         scores.append(s)
         filtered_triples = []
         for idx in np.argsort(scores)[-1::-1]:

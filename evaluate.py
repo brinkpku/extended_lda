@@ -29,4 +29,22 @@ def gen_fake_topic_word(topic_word_shape, fake_idxs):
         for widx in fake_idxs[tidx]:
             fake_topic_word[tidx][widx] = tmp
             tmp -= 1
-    return fake_topic_word 
+    return fake_topic_word
+
+
+def evaluate_triples_by_coherence(extended_res, vec, terms, topic_word, input_text, measure, top_n=20, window_size=None):
+    """ 
+    extended_res: relation.extend_lda_results return
+    vec: countvector model
+    return: (raw_score, extend_score)
+    """
+    tf = vec.fit_transform(input_text)
+    raw_score = lda.get_coherence(tf, terms, topic_word, input_text, measure, top_n=top_n, window_size=window_size)
+    fake_idxs = []
+    for e in extended: # topic
+        new_word_idxs = []
+        for t in e[:top_n]:# triples
+            new_word_idxs.extend(filter_triple2term_idx(t[0], vec))
+        fake_idxs.append(set(new_word_idxs))
+    fake_topic_word = gen_fake_topic_word(topic_word.shape, fake_idxs)
+    return raw_score, lda.get_coherence(tf, terms, fake_topic_word, _input, measure, top_n=top_n, window_size=window_size)
