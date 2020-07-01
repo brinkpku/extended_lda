@@ -18,7 +18,7 @@ import numpy as np
 from stanfordcorenlp import StanfordCoreNLP
 from stanza.server import CoreNLPClient
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+
 
 # corenlp api
 if configs.USECLI:
@@ -462,21 +462,6 @@ def evaluate_topic_triple(lemma_triple, topic_words, components_values):
     return importance
 
 
-def get_topic_term_frequency(topic_texts, min_df=1):
-    vector = CountVectorizer(ngram_range=(1, 1), stop_words='english', min_df=min_df)
-    vector.build_analyzer()
-    tf = vector.fit_transform(topic_texts)
-    return tf.toarray().sum(axis=0), vector
-
-
-def get_topic_ter_tfidf(topic_texts, min_df=1):
-    vector = TfidfVectorizer(ngram_range=(1, 1), stop_words='english', min_df=min_df)
-    vector.build_analyzer()
-    tfidf = vector.fit_transform(topic_texts)
-    return tfidf.toarray().sum(axis=0), vector
-
-
-
 def score_tf(lemma_triple, frequency, vec_tf):
     """ 三元组中词语在该话题top文章中出现的频次之和
     """
@@ -511,8 +496,8 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
         topic_terms = [terms[x[0]] for x in top_terms[t_idx]]
         topic_components = [x[1] for x in top_terms[t_idx]]
         topic_texts = [input_text[top_doc[0]] for top_doc in topic_res]
-        topic_term_fre, vec_tf = get_topic_term_frequency(topic_texts)
-        tfidf, vec_tfidf = get_topic_ter_tfidf(topic_texts)
+        topic_term_fre, vec_tf = evaluate.get_topic_term_frequency(topic_texts)
+        tfidf, vec_tfidf = evaluate.get_topic_term_tfidf(topic_texts)
         for top_doc in topic_res:
             doc_idx = top_doc[0]
             if type(parse_results[doc_idx]) is str:

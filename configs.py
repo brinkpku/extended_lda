@@ -36,3 +36,7 @@ ABSVEC = "absvec{}"
 # numpy, lda result: terms, doc_topic, topic_word
 ABSTRACTLDA = "results/{}" # lda model_name
 NEWSLDA = "results/{}"
+
+# wv model
+NEWSWV = "models/newswv{}.model" # size
+ABSWV = "models/abswv{}.model" # size

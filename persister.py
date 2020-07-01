@@ -4,6 +4,7 @@ import json
 import joblib
 
 import numpy as np
+from gensim.models import word2vec
 
 import configs
 
@@ -62,6 +63,11 @@ def save_model(model_name, model):
 
 def load_model(model_name):
     return joblib.load("".join([configs.MODELPATH, model_name, ".model"]))
+
+
+# load wv model
+def load_wv(model_name):
+    return word2vec.Word2Vec.load(model_name)
 
 
 if __name__ == "__main__":
