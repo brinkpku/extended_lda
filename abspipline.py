@@ -77,7 +77,7 @@ elif configs.MODE == "preprocess":
     for idx, parsed in enumerate(absparse):
         if type(parsed) == str:
             print("{} no parse result, use raw text instead of lemmatized.".format(idx))
-            handled_text = pp.lemma_texts(raw_data[idx])
+            handled_text = pp.lemma_texts(pp.format_abs(raw_data[idx]))
         else:
             print("convert to lda input:{}/{}".format(idx, len(absparse) - 1))
             handled_text = pp.convert_parse2lda_input(parsed)

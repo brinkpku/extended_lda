@@ -72,6 +72,8 @@ def format_abs(abstract):
     """
     abstract = re.sub(Elsevier, " ", abstract)
     abstract = re.sub(Rights, " ", abstract)
+    abstract = re.sub(r"\(.+?\)", " ", abstract) # remove brackets
+    abstract = re.sub(r"\d\)|i+?\)", " ", abstract) # seq num
     abstract = re.sub(r"\s+", " ", abstract)
     return abstract
     
@@ -79,8 +81,9 @@ def format_abs(abstract):
 def format_news(news):
     """ format news, remove unused character
     """
-    news = re.sub("[<>]|=+", " ", news)
-    news = re.sub("-{2,}|/{2,}", " ", news)
+    news = re.sub(r"[<>]|=+", " ", news)
+    news = re.sub(r"-{2,}|/{2,}", " ", news)
+    news = re.sub(r"\(.+?\)", " ", news)
     news = re.sub(r"\s+", " ", news)
     return news
 

@@ -11,3 +11,4 @@ models/*
 *.png
 results/*
 *.out
+*.zip

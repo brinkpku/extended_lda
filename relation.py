@@ -13,6 +13,7 @@ import configs
 import preprocess as pp
 import persister
 import evaluate
+import embedding
 
 import numpy as np
 from stanfordcorenlp import StanfordCoreNLP
@@ -139,8 +140,6 @@ def sent_contained_word_idxs(sent, topic_words):
 
 
 SCALER = MinMaxScaler()
-
-
 def min_max(raw_data):
     """https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.MinMaxScaler.html#sklearn-preprocessing-minmaxscaler
     raw_data: {array-like, sparse matrix, dataframe} of shape (n_samples, n_features)
@@ -474,7 +473,16 @@ def score_tfidf(lemma_triple, tfidf, vec_tfidf):
     return sum([tfidf[i] for i in idxs])
 
 
-def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, res_format="originalText", top_n=-1, score_method="basic"):
+def score_w2v_dist(lemma_triple, doc_w2v, model):
+    triple_w2v = embedding.get_doc_dense_vec(model, 
+    " ".join([lemma for argument in lemma_triple for lemma in argument]))
+    if type(triple_w2v) is bool:
+        return .0
+    else:
+        return np.dot(triple_w2v, doc_w2v)/(np.linalg.norm(triple_w2v)*(np.linalg.norm(doc_w2v))) # cosine
+
+
+def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, res_format="originalText", top_n=-1, score_method="basic", is_news=False):
     """ extend lda result to triples by relation parse and information extraction
     parse_results: list of dict, corpus corenlp parse result
     input_text: list of str, docs in list
@@ -485,10 +493,15 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
         basic is simplest, use evaluate_topic_triple
         tf: score_tf
         tfidf: score_tf_idf
+        w2v: score_w2v_dist
     return: list of list of tuple, (triple(list of list of str), float score)
     """
     if res_format not in ["originalText", "lemma"]:
         raise ValueError("format support 'originalText' or 'originalText'")
+    if is_news:
+        w2v_model = persister.load_wv(configs.NEWSWV.format(100))
+    else:
+        w2v_model = persister.load_wv(configs.ABSWV.format(100))
     all_triples = []
     for t_idx, topic_res in enumerate(top_docs):
         topic_triples = []
@@ -506,6 +519,7 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
             sents = convert_parse2lemma_sents(parse_results[doc_idx])
             sort_idxs, importance, _ = extract_important_sents(sents, 
                 [terms[x[0]] for x in top_terms[t_idx]], [x[1] for x in top_terms[t_idx]])
+            doc_w2v = embedding.get_doc_dense_vec(w2v_model, input_text[doc_idx])
             for i in sort_idxs:
                 if importance[i]>0:
                     sent_tokens = parse_results[doc_idx]["sentences"][i]["tokens"]
@@ -535,6 +549,8 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
                             s = score_tf(lemma_triple, topic_term_fre, vec_tf)
                         elif score_method == "tfidf":
                             s = score_tfidf(lemma_triple, tfidf, vec_tfidf)
+                        elif score_method == "w2v":
+                            s = score_w2v_dist(lemma_triple, doc_w2v, w2v_model)
                         else:
                             raise ValueError("unkown score method")
                         scores.append(s)
@@ -582,7 +598,6 @@ def get_phrases_by_pattern(parses):
                         _s = idx
                         extension = True
     return phrases
-
 
 
 if __name__ == '__main__':

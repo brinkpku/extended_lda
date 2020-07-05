@@ -4,6 +4,7 @@
 """
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.svm import SVC
 
 import lda
 
@@ -77,7 +78,7 @@ def evaluate_triples_by_coherence(extended_res, vec, terms, topic_word, input_te
         new_words = []
         for t in e:  # triples
             new_words.extend([lemma for argument in t[0]
-                              for lemma in argument]) 
+                              for lemma in argument])
         new_words = [word for word in list( # remove duplicate and not in vocab
             set(new_words)) if word in topic_vec_tf.vocabulary_]
         if score == "tf":
@@ -89,3 +90,11 @@ def evaluate_triples_by_coherence(extended_res, vec, terms, topic_word, input_te
         fake_idxs.append([vec.vocabulary_[word] for word in new_words])
     fake_topic_word = gen_fake_topic_word(topic_word.shape, fake_idxs)
     return lda.get_coherence(tf, terms, fake_topic_word, input_text, measure, top_n=min_top, window_size=window_size)
+
+
+def evaluate_triples_by_vec_dist():
+    pass
+
+
+def evaluate_classify():
+    pass

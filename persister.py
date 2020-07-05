@@ -72,7 +72,7 @@ def load_wv(model_name):
 
 if __name__ == "__main__":
     print("read parse")
-    parseres = read_parse(configs.NEWSPARSE)
+    parseres = read_parse(configs.ABSTRACTPARSE)
     failed_idxs = []
     for idx, i in enumerate(parseres):
         if type(i) == str:
