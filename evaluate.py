@@ -132,19 +132,19 @@ def draw_coherence_line(old_coherence, new_coherence, emethods, fmethod="tf", me
     emethods: list of str, same length with new_coherence
     """
     label = "{}" # emethod, fmethod
-    line_data = [enumerate(old_coherence),]
+    line_data = [list(enumerate(old_coherence)),]
     linestyle = ['--',]
     labels = ["pure lda",]
     for idx,coh in enumerate(new_coherence):
-        line_data.append(enumerate(coh))
+        line_data.append(list(enumerate(coh)))
         labels.append(label.format(emethods[idx]))
-        liinestyle.append('-')
+        linestyle.append('-')
     title = "Topic coherence"
     xlabel = "Topic"
     ylabel = "Cohrence {}_{}".format(measure, ws)
     legend_title = "E-methods"
     fname = "coh_filter_{}".format(fmethod)
-    vis.plot_line(fname, line_data, labels, linstyle, title, xlabel, ylabel, lengend_title, save=True)
+    vis.plot_line(fname, line_data, labels, linestyle, title, xlabel, ylabel, legend_title, save=True)
 
 
 def evaluate_triples_by_vec_dist():
