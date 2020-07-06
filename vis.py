@@ -3,6 +3,7 @@
 """
 import matplotlib.pyplot as plt
 import pyLDAvis
+from wordcloud import WordCloud
 
 import lda
 import configs
@@ -51,6 +52,19 @@ def pyLDA(topic_term_dists, doc_topic_dists, doc_lengths, vocab, term_frequency)
     pyLDAvis.enable_notebook(True)
     data = pyLDAvis.prepare(topic_term_dists, doc_topic_dists, doc_lengths, vocab, term_frequency)
     pyLDAvis.show(data)
+
+
+def draw_word_cloud(fname, word_frequency, save=True):
+    """
+    word_frequency: dict, {word: frequency/weight}
+    """
+    wc = WordCloud(background_color=None, mode="RGBA").generate_from_frequencies(word_frequency)
+    if save:
+        wc.to_file(fname)
+    else:
+        plt.imshow(wc, interpolation='bilinear')
+        plt.axis('off')
+        plt.show()
 
 
 if __name__=="__main__":

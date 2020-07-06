@@ -40,3 +40,7 @@ NEWSLDA = "results/{}"
 # wv model
 NEWSWV = "models/newswv{}.model" # size
 ABSWV = "models/abswv{}.model" # size
+
+# statistic picture
+TUNELINE = "tune_{}_{}" # type, measure
+WORDCLOUD = "wc_{}{}.png" # type, num

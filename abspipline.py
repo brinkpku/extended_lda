@@ -17,10 +17,14 @@ import vis
 
 if configs.MODE == "load":
     print("load mode..")
+    model_name = "abstractlda614c_v2001"
     raw_data = persister.load_json(configs.RAWABSTRACT)
     lda_input = persister.read_input(configs.ABSTRACTINPUT)
-    terms, doc_topic, topic_word = persister.read_lda(configs.ABSTRACTLDA)
+    terms, doc_topic, topic_word = persister.read_lda(configs.ABSTRACTLDA.format(model_name))
     absparse = persister.read_parse(configs.ABSTRACTPARSE)
+    top_terms, top_docs = lda.get_topics(topic_word, terms, doc_topic)
+    for idx, t in enumerate(top_terms):
+        vis.draw_word_cloud(configs.WORDCLOUD.format("abs", idx), {terms[k]:v for k,v in top_terms[idx]})
 elif configs.MODE == "init":
     # DE: keywords
     # ID: extended keywords
@@ -65,7 +69,8 @@ elif configs.MODE == "reparse":
     for idx, i in enumerate(parseres):
         if type(i) == str:
             failed_idxs.append(idx)
-    relation.reannotate(failed_idxs, configs.ABSTRACTPARSE, raw_data, format_func=pp.format_abs)
+    relation.reannotate(failed_idxs, configs.ABSTRACTPARSE,
+                        raw_data, format_func=pp.format_abs)
 
 elif configs.MODE == "preprocess":
     print("preprocess as lda input..")
@@ -88,14 +93,14 @@ elif configs.MODE == "tune":
     print("do lda..")
     abs_input = persister.read_input(configs.ABSTRACTINPUT)
     min_df = 1
-    measure = "c_v"
+    measure = "c_uci"
     tf, vec_model = lda.extract_feature(abs_input, min_df=min_df)
     terms = np.array(vec_model.get_feature_names())
-    learning_rates = [.5, .6, .7]
-    topic_params = range(8, 22, 2)
+    learning_rates = [.6, ]
+    topic_params = range(10, 50, 5)
     line_data = []
     best_model = None
-    best_rate = .5
+    best_rate = .6
     best_iter = 200
     c_max = -999
     for r in learning_rates:
@@ -110,12 +115,14 @@ elif configs.MODE == "tune":
     doc_topic = best_model.fit_transform(tf)
     model_name = configs.ABSTRACTMODEL.format(
         int(best_rate*10), len(topic_word), measure, best_iter, min_df)
-    persister.persist_lda(configs.ABSTRACTLDA.format(model_name), terms, doc_topic, topic_word)
+    persister.persist_lda(configs.ABSTRACTLDA.format(
+        model_name), terms, doc_topic, topic_word)
     persister.save_model(model_name, best_model)
     persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
-    lda.print_topics(topic_word, terms, doc_topic)
-    vis.plot_line("absnums", line_data, list(map(str, learning_rates)),
-                  xlabel="topic num", ylabel="coherence", legend_title="learning decay", title=model_name)
+    # lda.print_topics(topic_word, terms, doc_topic)
+    vis.plot_line(configs.TUNELINE.format("abs", measure), line_data, list(map(str, learning_rates)),
+                  xlabel="topic num", ylabel="{} coherence".format(measure), 
+                  legend_title="learning decay", title="best model:{}".format(model_name))
 
 elif configs.MODE == "lda":
     _rate = .6
@@ -123,13 +130,16 @@ elif configs.MODE == "lda":
     _num = 14
     measure = "c_v"
     min_df = 1
-    model_name = configs.ABSTRACTMODEL.format(int(_rate*10), _num, measure, _iter, min_df)
+    model_name = configs.ABSTRACTMODEL.format(
+        int(_rate*10), _num, measure, _iter, min_df)
     print("train", model_name)
     _input = persister.read_input(configs.ABSTRACTINPUT)
     tf, vec_model = lda.extract_feature(_input, min_df=min_df)
     terms = np.array(vec_model.get_feature_names())
-    doc_topic, lda_model = lda.do_lda(tf, topic_num=_num, max_iter=_iter, learning_decay=_rate)
-    persister.persist_lda(configs.ABSTRACTLDA.format(model_name), terms, doc_topic, lda_model.components_)
+    doc_topic, lda_model = lda.do_lda(
+        tf, topic_num=_num, max_iter=_iter, learning_decay=_rate)
+    persister.persist_lda(configs.ABSTRACTLDA.format(
+        model_name), terms, doc_topic, lda_model.components_)
     persister.save_model(model_name, lda_model)
     persister.save_model(configs.ABSVEC.format(min_df), vec_model)
     print("Done")

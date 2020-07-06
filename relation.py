@@ -285,7 +285,7 @@ def word_extend_by_pattern(word_idx, sent_tokens):
 
 
 NMOD = ["in", "at", "from", "through", "to", "on", "of", "about", "over", "for", "as", "with", "without"]
-def word_extend_by_relation(word_idx, sent_deps):
+def word_extend_by_relation(word_idx, sent_deps, extend_nmod=False):
     """ use relation to extend words, usually for subj and obj
     simply, nmod:xx only extend once
     return: tuple of int, extended word indexes in sent
@@ -306,12 +306,15 @@ def word_extend_by_relation(word_idx, sent_deps):
                         break
         elif r[utils.DEP].startswith("conj") or r[utils.DEP] == "cc": # 并列关系
             res.append(r[utils.DEPENDENT] - 1)
+        elif extend_nmod and r[utils.DEP] == "case":
+            res.append(r[utils.DEPENDENT] - 1)
     return tuple(sorted(res))
 
 
 def predicate_extend(word_idx, sent_deps, predicate):
     """ 原地扩展动词为 动词+介词 或 动词并列形式
     """
+    extend_nmod = True
     res = [word_idx,]
     word_relations = get_governor_relation(word_idx, sent_deps)
     for r in word_relations:
@@ -322,12 +325,14 @@ def predicate_extend(word_idx, sent_deps, predicate):
                 for sr in secondary_relations:
                     if sr[utils.DEP] == "case" and sr[utils.DEPENDENT] == r[utils.GOVERNOR]+1:#动词介词相邻
                         res.append(sr[utils.DEPENDENT]-1)
+                        extend_nmod = False # 谓词已经扩展介词，宾语不需要再扩展
                         break
         elif r[utils.DEP] == "compound:prt":
             res.append(r[utils.DEPENDENT] - 1)
         # elif r[utils.DEP].startswith("conj") or r[utils.DEP] == "cc": # 并列关系
         #     res.append(r[utils.DEPENDENT] - 1)
     predicate[0] = tuple(sorted(res))
+    return extend_nmod
 
 
 def tuple_contain(longer, shorter):
@@ -430,9 +435,9 @@ def extract_triples_from_sent(sent_deps, sent_tokens, use_relation=False):
                 nmod = re.findall("nmod:(.+)", r[utils.DEP])
                 if nmod and nmod[0] in NMOD and not_cop: 
                     # 当主系表结构当前支配词并非动词，不需要扩展；其介词关系在cop中扩展
-                    predicate_extend(predicate_idx, sent_deps, predicate)
+                    extend_nmod = predicate_extend(predicate_idx, sent_deps, predicate)
                     if use_relation:
-                        objs.append(word_extend_by_relation(r[utils.DEPENDENT]-1, sent_deps))
+                        objs.append(word_extend_by_relation(r[utils.DEPENDENT]-1, sent_deps, extend_nmod))
                     else:
                         objs.append(word_extend_by_pattern(r[utils.DEPENDENT]-1, sent_tokens))
             elif r[utils.DEP].startswith(("advcl", "xcomp", "ccomp")): # 状语从句、开放补语从句、补语从句
