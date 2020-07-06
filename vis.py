@@ -10,7 +10,7 @@ import configs
 import persister
 
 
-def plot_line(figurename, line_data, labels, title=None, xlabel=None, ylabel=None, legend_title=None, save=True):
+def plot_line(figurename, line_data, labels, linestyle=None, title=None, xlabel=None, ylabel=None, legend_title=None, save=True):
     """ plot line
     figurename: str, name for saved figure
     line_data: list of list of tuple, [line1[(x,y),...],...]
@@ -18,7 +18,11 @@ def plot_line(figurename, line_data, labels, title=None, xlabel=None, ylabel=Non
     """
     plt.figure(figsize=(12, 8))
     for idx, l in enumerate(line_data):
-        plt.plot([x[0] for x in l], [y[1] for y in l], label=labels[idx])
+        if linestyle:
+            lines = linestyle[idx]
+        else:
+            lines = '-'
+        plt.plot([x[0] for x in l], [y[1] for y in l], label=labels[idx], linestyle=lines)
     if title:
         plt.title(title)
     if xlabel:

@@ -466,25 +466,25 @@ def evaluate_topic_triple(lemma_triple, topic_words, components_values):
     return importance
 
 
-def score_tf(lemma_triple, frequency, vec_tf):
+def score_tf(lemma_triple, frequency, vec_tf, triple_importance):
     """ 三元组中词语在该话题top文章中出现的频次之和
     """
     idxs = evaluate.filter_triple2term_idx(lemma_triple, vec_tf)
-    return sum([frequency[i] for i in idxs])
+    return triple_importance*sum([frequency[i] for i in idxs])
 
 
-def score_tfidf(lemma_triple, tfidf, vec_tfidf):
+def score_tfidf(lemma_triple, tfidf, vec_tfidf, triple_importance):
     idxs = evaluate.filter_triple2term_idx(lemma_triple, vec_tfidf)
-    return sum([tfidf[i] for i in idxs])
+    return triple_importance*sum([tfidf[i] for i in idxs])
 
 
-def score_w2v_dist(lemma_triple, doc_w2v, model):
+def score_w2v_dist(lemma_triple, doc_w2v, model, doc_importance):
     triple_w2v = embedding.get_doc_dense_vec(model, 
     " ".join([lemma for argument in lemma_triple for lemma in argument]))
     if type(triple_w2v) is bool:
         return .0
     else:
-        return np.dot(triple_w2v, doc_w2v)/(np.linalg.norm(triple_w2v)*(np.linalg.norm(doc_w2v))) # cosine
+        return doc_importance*np.dot(triple_w2v, doc_w2v)/(np.linalg.norm(triple_w2v)*(np.linalg.norm(doc_w2v))) # cosine
 
 
 def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, res_format="originalText", top_n=-1, score_method="basic", is_news=False):
@@ -525,6 +525,7 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
             sort_idxs, importance, _ = extract_important_sents(sents, 
                 [terms[x[0]] for x in top_terms[t_idx]], [x[1] for x in top_terms[t_idx]])
             doc_w2v = embedding.get_doc_dense_vec(w2v_model, input_text[doc_idx])
+            doc_importance = sum(importance)
             for i in sort_idxs:
                 if importance[i]>0:
                     sent_tokens = parse_results[doc_idx]["sentences"][i]["tokens"]
@@ -548,14 +549,15 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
                                         [sent_tokens[i]["lemma"] for i in triple[1]],
                                         [sent_tokens[i]["lemma"] for i in triple[2]],
                                     ]
+                        triple_importance = evaluate_topic_triple(reduce(lambda a,b:a+b, lemma_triple), topic_terms, topic_components)
                         if score_method == "basic": 
-                            s = evaluate_topic_triple(reduce(lambda a,b:a+b, lemma_triple), topic_terms, topic_components)
+                            s = triple_importance
                         elif score_method == "tf":
-                            s = score_tf(lemma_triple, topic_term_fre, vec_tf)
+                            s = score_tf(lemma_triple, topic_term_fre, vec_tf, triple_importance)
                         elif score_method == "tfidf":
-                            s = score_tfidf(lemma_triple, tfidf, vec_tfidf)
+                            s = score_tfidf(lemma_triple, tfidf, vec_tfidf, triple_importance)
                         elif score_method == "w2v":
-                            s = score_w2v_dist(lemma_triple, doc_w2v, w2v_model)
+                            s = score_w2v_dist(lemma_triple, doc_w2v, w2v_model, doc_importance)
                         else:
                             raise ValueError("unkown score method")
                         scores.append(s)
@@ -570,7 +572,7 @@ def extend_lda_results(parse_results, input_text, top_terms, top_docs, terms, re
         else:
             all_triples.append(filtered_triples[:top_n])
     return all_triples
-
+                
 
 NOUN_PHRASE = "J*[NF]+"
 
