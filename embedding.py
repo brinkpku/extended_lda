@@ -46,10 +46,10 @@ def get_doc_dense_vec(model, doc, size=100):
 if __name__=="__main__":
     size = 100
     abs_input = persister.read_input(configs.ABSTRACTINPUT)
-    # news_input = persister.read_input(configs.NEWSINPUT)
+    news_input = persister.read_input(configs.NEWSINPUT)
 
     abs_wv = train_wv([word_tokenize(a) for a in abs_input], size=size)
     abs_wv.save(configs.ABSWV.format(size))
 
-    # news_wv = train_wv([word_tokenize(n) for n in news_input], size=size)
-    # news_wv.save(configs.NEWSWV.format(size))
+    news_wv = train_wv([word_tokenize(n) for n in news_input], size=size, min_count=1)
+    news_wv.save(configs.NEWSWV.format(size))

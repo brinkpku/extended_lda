@@ -30,15 +30,34 @@ elif configs.MODE == "init":  # prepare and preprocess raw data
 
 elif configs.MODE == "parse":  # parse raw data with corenlp annotator
     print("annotate sentence..")
-    rawnews = persister.load_json(configs.RAWNEWS)
+    # rawnews = persister.load_json(configs.RAWNEWS)
+    print("get raw data..")
+    rawnews = get_news_data(1000)
+    parsed_num = 0
+    if os.path.exists(configs.NEWSPARSE+".json"):
+        print("load newsparse")
+        parseres = persister.read_parse()
+        parsed_num = len(parseres)
+    real_raw_news = []
     with CoreNLPClient(properties="./corenlp_server.props", timeout=25000, memory='4G') as client:
-        for idx, news in enumerate(rawnews):
-            if idx < int(configs.RECOVERIDX):
-                print("recover", idx)
-                continue
-            print("parse {}/{} news".format(idx, len(rawnews) - 1))
-            res = relation.corenlp_annotate(client, pp.format_news(news))
-            persister.add_json(configs.NEWSPARSE, res)
+        while parsed_num<2000:
+            cate = rawnews[parsed_num//500]
+            for nidx, news in enumerate(cate):
+                if nidx<int(configs.RECOVERIDX):
+                    print("recover", parsed_num//500, nidx)
+                    continue
+                print("parse {}/{}/{} news".format(parsed_num//500, nidx, parsed_num))
+                res = relation.corenlp_annotate(client, pp.format_news(news))
+                if type(res) == str:
+                    continue
+                persister.add_json(configs.NEWSPARSE, res)
+                real_raw_news.append(news)
+                parsed_num += 1
+                if parsed_num%500 == 0:
+                    break
+            if parsed_num%500 != 0:
+                raise ValueError("cate not 500 parsed")
+            # persister.save_json(configs.RAWNEWS, real_raw_news) # 没有parse error 不需要存原始信息了
 
 elif configs.MODE == "reparse":  # reparse failed data
     print("get raw data..")
@@ -49,7 +68,7 @@ elif configs.MODE == "reparse":  # reparse failed data
         if type(i) == str:
             failed_idxs.append(idx)
     time.sleep(10)
-    relation.reannotate(failed_idxs, configs.NEWSPARSE, rawnews)
+    relation.reannotate(failed_idxs, configs.NEWSPARSE, rawnews, format_func=pp.format_news)
 
 elif configs.MODE == "preprocess":  # use parsed lemma and preprocess it as lda input
     print("preprocess as lda input..")
@@ -57,12 +76,13 @@ elif configs.MODE == "preprocess":  # use parsed lemma and preprocess it as lda 
         os.remove(configs.NEWSINPUT)
         print("removed", configs.NEWSINPUT)
     newsparse = persister.read_parse()
-    rawnews = persister.load_json(configs.RAWNEWS)
+    # rawnews = persister.load_json(configs.RAWNEWS)
     for idx, parsed in enumerate(newsparse):
         if type(parsed) == str:
             print("{} no parse result, use nltk lemmatized text instead.".format(idx))
-            tmp = pp.format_news(rawnews[idx])
-            handled_text = pp.lemma_texts(tmp)
+            raise ValueError("unexpected parse error")
+            # tmp = pp.format_news(rawnews[idx])
+            # handled_text = pp.lemma_texts(tmp)
         else:
             print("convert to lda input:{}/{}".format(idx, len(newsparse) - 1))
             handled_text = pp.convert_parse2lda_input(parsed)
@@ -73,7 +93,7 @@ elif configs.MODE == "tune":  # lda model tuning
     print("run lda..")
     news_input = persister.read_input(configs.NEWSINPUT)
     min_df = 1
-    measure = "u_mass"
+    measure = "c_v"
     tf, vec_model = lda.extract_feature(news_input, min_df=min_df)
     terms = np.array(vec_model.get_feature_names())
     max_iter_times = [200, 500]
@@ -108,7 +128,7 @@ elif configs.MODE == "tune":  # lda model tuning
     persister.persist_lda(configs.NEWSLDA.format(model_name), terms, best_res, topic_word)
     persister.save_model(model_name, best_model)
     persister.save_model(configs.NEWSVEC.format(min_df), vec_model)
-    lda.print_topics(topic_word, terms, best_res)
+    # lda.print_topics(topic_word, terms, best_res)
     vis.plot_line("news_iter_learning", line_data, list(map(str, max_iter_times)),
                   xlabel="learning decay", ylabel="coherence", legend_title="iter time", title=model_name)
 

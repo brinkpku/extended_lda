@@ -3,8 +3,8 @@ from sklearn.datasets import fetch_20newsgroups
 import numpy as np
 
 
-CATEGORIES = ['comp.graphics', 'comp.windows.x',
-              'rec.autos', 'rec.sport.baseball']
+CATEGORIES = ['comp.graphics', 'sci.med',
+              'rec.autos', 'talk.politics.guns']
 SIZE = 10
 
 

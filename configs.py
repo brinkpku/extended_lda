@@ -1,7 +1,7 @@
 # !/usr/bin/env python3
 import os
 
-MAX_TRY = 3
+MAX_TRY = 2
 DEBUG = os.getenv("debug", True)
 
 MODE = os.getenv("mode", "init") # init, load, parse, reparse, preprocess, tune, lda

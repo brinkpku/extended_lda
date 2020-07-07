@@ -5,9 +5,11 @@
 import numpy as np
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.svm import SVC
+from sklearn.preprocessing import MinMaxScaler
 
 import lda
 import vis
+import embedding
 
 
 def filter_triple2term_idx(lemma_triple, vec):
@@ -151,5 +153,89 @@ def evaluate_triples_by_vec_dist():
     pass
 
 
-def evaluate_classify():
-    pass
+def svm(train_data, train_label, test_data, test_label):
+    clf = SVC(kernel="rbf")
+    clf.fit(train_data, train_label)
+    return clf.score(test_data, test_label)
+
+
+def convert_extended_words2weights(extended_words, topic_words, vec):
+    words = []
+    weights = []
+    for idx, e in enumerate(extended_words):
+        tmp = []
+        tmp_weights = []
+        for w in e:
+            w_idx = vec.vocabulary_[w]
+            tmp.append(w)
+            tmp_weights.append(topic_words[idx][w_idx])
+        normalized_weights = [c/sum(tmp_weights) for c in tmp_weights]
+        words.append(tmp)
+        weights.append(normalized_weights)
+    return words, weights
+
+
+def normalize_top_terms(top_terms, terms):
+    words = []
+    weights = []
+    for idx, t in enumerate(top_terms):
+        tmp = []
+        tmp_w = []
+        for tu in t:
+            tmp.append(terms[tu[0]])
+            tmp_w.append(tu[1])
+        normalized_weights = [c/sum(tmp_w) for c in tmp_w]
+        words.append(tmp)
+        weights.append(normalized_weights)
+    return words, weights
+
+
+
+def get_topic_vec(_words, weights, model, size=100):
+    """
+    _words: list of str, topic word
+    weights: list of float, weights
+    model: dense vector
+    """
+    s = np.full((1,size), 0, dtype=np.float32)[0]
+    for idx,w in enumerate(_words):
+        if w in model.wv:
+            # s += weights[idx] * model.wv[w]
+            s+=model.wv[w]
+    return s
+
+
+def get_hybrid_feature(input_text, model, words, weights, method="o"):
+    doc_vecs = []
+    for doc in input_text:
+        doc_vecs.append(embedding.get_doc_dense_vec(model, doc))
+    topic_vecs = []
+    for idx, t in enumerate(words):
+        topic_vecs.append(get_topic_vec(t, weights[idx], model))
+    hybrid_features = []
+    for d in doc_vecs:
+        tmp = []
+        for t in topic_vecs:
+            if method == "o":
+                tmp.append(np.linalg.norm(d - t))
+            elif method == "c":
+                tmp.append(np.dot(t, d)/(np.linalg.norm(t)*(np.linalg.norm(d))))
+        hybrid_features.append(tmp)
+    return hybrid_features
+
+
+def split_data_set(data):
+    data = [data[:500], data[500:1000], data[1000:1500], data[1500:2000]]
+    train = []
+    train_label = []
+    test = []
+    test_label = []
+    for c_idx, d in enumerate(data):
+        for idx, n in enumerate(d):
+            if idx%5==0:
+                test.append(n)
+                test_label.append(c_idx)
+            else:
+                train.append(n)
+                train_label.append(c_idx)
+    return train, train_label, test, test_label
